@@ -124,59 +124,40 @@ export default function DashboardLayout() {
     ? { name: user.name, avatar: '', email: user.email, phone: '' }
     : { name: '', avatar: '', email: '', phone: '' }
 
-  const DEFAULT_PROJECT = {
-    title: 'Adil Construction Luxury Residence Project',
-    location: 'Lucknow, Uttar Pradesh',
-    progress: 15,
-    lastUpdated: 'Today',
-    thumbnail: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
+  const EMPTY_PROJECT = {
+    title: user?.name ? `${user.name}'s Construction Project` : 'Client Construction Project',
+    location: 'Project Location (Pending Admin Assignment)',
+    progress: 0,
+    lastUpdated: 'Portal Active',
+    thumbnail: '',
     currentStage: {
-      name: 'Architectural Planning & Soil Testing',
-      status: 'In Progress',
-      startedOn: 'This Week',
-      estimatedCompletion: 'Next Month',
+      name: 'Awaiting Admin Project Assignment',
+      status: 'Pending',
+      startedOn: '—',
+      estimatedCompletion: 'TBD',
     },
     nextMilestone: {
-      name: 'Foundation Laying & Column Excavation',
-      expectedOn: 'In 2 Weeks',
+      name: 'Initial Site Survey & Architectural Review',
+      expectedOn: 'Upcoming',
     },
   }
 
-  const DEFAULT_TIMELINE = [
-    { name: '1. Architecture & Site Blueprint', status: 'in-progress' as const, percent: 65, icon: 'layers' as const },
+  const EMPTY_TIMELINE = [
+    { name: '1. Architecture & Site Blueprint', status: 'pending' as const, percent: 0, icon: 'layers' as const },
     { name: '2. Foundation & Substructure', status: 'pending' as const, percent: 0, icon: 'square' as const },
     { name: '3. RCC Frame & Brick Masonry', status: 'pending' as const, percent: 0, icon: 'brick-wall' as const },
     { name: '4. Electrical & Plumbing Lines', status: 'pending' as const, percent: 0, icon: 'home' as const },
     { name: '5. Interior Fitting & Handover', status: 'pending' as const, percent: 0, icon: 'sparkles' as const },
   ]
 
-  const DEFAULT_UPDATES = [
+  const EMPTY_UPDATES = [
     {
-      id: 'update-1',
+      id: 'empty-1',
       date: 'Today',
-      time: '11:30 AM',
-      description: '🏗️ Welcome to Adil Constructions Client Portal! Your project space is active. Architectural blueprints, daily site photos, and structural reports will be logged here.',
-      thumbnailUrl: 'https://images.unsplash.com/photo-1541888946425-d0fbb186a5b3?auto=format&fit=crop&w=800&q=80',
+      time: 'Just now',
+      description: `👋 Welcome ${user?.name || 'Client'}! Your portal is active. Daily site progress updates, photos, and structural logs will appear here once construction begins.`,
+      thumbnailUrl: '',
     },
-    {
-      id: 'update-2',
-      date: 'Yesterday',
-      time: '04:15 PM',
-      description: '📐 Initial site survey completed. Geotechnical soil sampling approved by senior site engineer.',
-      thumbnailUrl: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=800&q=80',
-    },
-  ]
-
-  const DEFAULT_PHOTOS = [
-    { url: 'https://images.unsplash.com/photo-1541888946425-d0fbb186a5b3?auto=format&fit=crop&w=800&q=80', alt: 'Site Excavation & Survey' },
-    { url: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=800&q=80', alt: 'Foundation Soil Testing' },
-    { url: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80', alt: 'Architectural Render' },
-  ]
-
-  const DEFAULT_DOCUMENTS = [
-    { id: 'doc-1', name: 'Project_Agreement_Contract.pdf', size: '2.4 MB', fileUrl: '#' },
-    { id: 'doc-2', name: 'Architectural_Blueprint_Plan.pdf', size: '5.1 MB', fileUrl: '#' },
-    { id: 'doc-3', name: 'Soil_Testing_Engineering_Report.pdf', size: '1.8 MB', fileUrl: '#' },
   ]
 
   const mappedTimeline = data.timeline.length > 0 ? data.timeline.map((p) => ({
@@ -184,15 +165,15 @@ export default function DashboardLayout() {
     status: phaseStatusMap[p.status] ?? 'pending' as TimelinePhaseStatus,
     percent: p.percent,
     icon: 'layers' as const,
-  })) : DEFAULT_TIMELINE
+  })) : EMPTY_TIMELINE
 
   const mappedUpdates = data.updates.length > 0 ? data.updates.map((u, i) => ({
     id: String(i),
     date: new Date(u.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
     time: new Date(u.createdAt).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true }),
     description: u.description ?? u.title,
-    thumbnailUrl: u.thumbnailUrl ?? 'https://images.unsplash.com/photo-1541888946425-d0fbb186a5b3?auto=format&fit=crop&w=800&q=80',
-  })) : DEFAULT_UPDATES
+    thumbnailUrl: u.thumbnailUrl ?? '',
+  })) : EMPTY_UPDATES
 
   const mappedProjectData = (data.overview && data.project) ? {
     title: data.project.title,
@@ -210,13 +191,13 @@ export default function DashboardLayout() {
       name: data.overview.nextMilestoneName,
       expectedOn: data.overview.nextMilestoneDate,
     },
-  } : DEFAULT_PROJECT
+  } : EMPTY_PROJECT
 
   const mappedPaymentData = data.paymentSummary ? {
     paid: data.paymentSummary.paidAmount,
     remaining: data.paymentSummary.remainingAmount,
-    nextPayment: { amount: 500000, dueDate: 'In 15 Days' },
-  } : { paid: 0, remaining: 3500000, nextPayment: { amount: 500000, dueDate: 'In 15 Days' } }
+    nextPayment: { amount: 0, dueDate: 'No Pending Dues' },
+  } : { paid: 0, remaining: 0, nextPayment: { amount: 0, dueDate: 'No Pending Dues' } }
 
   const mappedNotifications = data.notifications.map((n) => ({
     id: String(n.id),
@@ -225,12 +206,12 @@ export default function DashboardLayout() {
     isRead: n.isRead,
   }))
 
-  const mappedDocuments = data.documents.length > 0 ? data.documents.map((d, i) => ({
+  const mappedDocuments = data.documents.map((d, i) => ({
     id: String(i),
     name: d.fileName,
-    size: '1.5 MB',
+    size: '',
     fileUrl: d.fileUrl,
-  })) : DEFAULT_DOCUMENTS
+  }))
 
   // ---------------------------------------------------------------------------
   // Context value
@@ -263,7 +244,7 @@ export default function DashboardLayout() {
             project={mappedProjectData}
             timelinePhases={mappedTimeline}
             updates={mappedUpdates}
-            sitePhotos={DEFAULT_PHOTOS}
+            sitePhotos={[]}
             documents={mappedDocuments}
             paymentHistoryEntries={[]}
             chatMessages={chatMessages}
