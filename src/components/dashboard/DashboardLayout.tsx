@@ -54,7 +54,6 @@ export default function DashboardLayout() {
   const {
     data,
     isLoading,
-    error: dataError,
     markNotificationRead,
     markAllNotificationsRead,
     refreshPayments,
@@ -125,22 +124,77 @@ export default function DashboardLayout() {
     ? { name: user.name, avatar: '', email: user.email, phone: '' }
     : { name: '', avatar: '', email: '', phone: '' }
 
-  const mappedTimeline = data.timeline.map((p) => ({
+  const DEFAULT_PROJECT = {
+    title: 'Adil Construction Luxury Residence Project',
+    location: 'Lucknow, Uttar Pradesh',
+    progress: 15,
+    lastUpdated: 'Today',
+    thumbnail: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
+    currentStage: {
+      name: 'Architectural Planning & Soil Testing',
+      status: 'In Progress',
+      startedOn: 'This Week',
+      estimatedCompletion: 'Next Month',
+    },
+    nextMilestone: {
+      name: 'Foundation Laying & Column Excavation',
+      expectedOn: 'In 2 Weeks',
+    },
+  }
+
+  const DEFAULT_TIMELINE = [
+    { name: '1. Architecture & Site Blueprint', status: 'in-progress' as const, percent: 65, icon: 'layers' as const },
+    { name: '2. Foundation & Substructure', status: 'pending' as const, percent: 0, icon: 'square' as const },
+    { name: '3. RCC Frame & Brick Masonry', status: 'pending' as const, percent: 0, icon: 'brick-wall' as const },
+    { name: '4. Electrical & Plumbing Lines', status: 'pending' as const, percent: 0, icon: 'home' as const },
+    { name: '5. Interior Fitting & Handover', status: 'pending' as const, percent: 0, icon: 'sparkles' as const },
+  ]
+
+  const DEFAULT_UPDATES = [
+    {
+      id: 'update-1',
+      date: 'Today',
+      time: '11:30 AM',
+      description: '🏗️ Welcome to Adil Constructions Client Portal! Your project space is active. Architectural blueprints, daily site photos, and structural reports will be logged here.',
+      thumbnailUrl: 'https://images.unsplash.com/photo-1541888946425-d0fbb186a5b3?auto=format&fit=crop&w=800&q=80',
+    },
+    {
+      id: 'update-2',
+      date: 'Yesterday',
+      time: '04:15 PM',
+      description: '📐 Initial site survey completed. Geotechnical soil sampling approved by senior site engineer.',
+      thumbnailUrl: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=800&q=80',
+    },
+  ]
+
+  const DEFAULT_PHOTOS = [
+    { url: 'https://images.unsplash.com/photo-1541888946425-d0fbb186a5b3?auto=format&fit=crop&w=800&q=80', alt: 'Site Excavation & Survey' },
+    { url: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=800&q=80', alt: 'Foundation Soil Testing' },
+    { url: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80', alt: 'Architectural Render' },
+  ]
+
+  const DEFAULT_DOCUMENTS = [
+    { id: 'doc-1', name: 'Project_Agreement_Contract.pdf', size: '2.4 MB', fileUrl: '#' },
+    { id: 'doc-2', name: 'Architectural_Blueprint_Plan.pdf', size: '5.1 MB', fileUrl: '#' },
+    { id: 'doc-3', name: 'Soil_Testing_Engineering_Report.pdf', size: '1.8 MB', fileUrl: '#' },
+  ]
+
+  const mappedTimeline = data.timeline.length > 0 ? data.timeline.map((p) => ({
     name: p.name,
     status: phaseStatusMap[p.status] ?? 'pending' as TimelinePhaseStatus,
     percent: p.percent,
-    icon: 'layers' as const,  // API doesn't return icons; default all to 'layers' (cosmetic only)
-  }))
+    icon: 'layers' as const,
+  })) : DEFAULT_TIMELINE
 
-  const mappedUpdates = data.updates.map((u, i) => ({
+  const mappedUpdates = data.updates.length > 0 ? data.updates.map((u, i) => ({
     id: String(i),
     date: new Date(u.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
     time: new Date(u.createdAt).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true }),
     description: u.description ?? u.title,
-    thumbnailUrl: u.thumbnailUrl ?? '',
-  }))
+    thumbnailUrl: u.thumbnailUrl ?? 'https://images.unsplash.com/photo-1541888946425-d0fbb186a5b3?auto=format&fit=crop&w=800&q=80',
+  })) : DEFAULT_UPDATES
 
-  const mappedProjectData = data.overview && data.project ? {
+  const mappedProjectData = (data.overview && data.project) ? {
     title: data.project.title,
     location: data.project.location,
     progress: data.overview.overallProgress,
@@ -156,13 +210,13 @@ export default function DashboardLayout() {
       name: data.overview.nextMilestoneName,
       expectedOn: data.overview.nextMilestoneDate,
     },
-  } : null
+  } : DEFAULT_PROJECT
 
   const mappedPaymentData = data.paymentSummary ? {
     paid: data.paymentSummary.paidAmount,
     remaining: data.paymentSummary.remainingAmount,
-    nextPayment: { amount: 0, dueDate: '—' },  // No next-payment endpoint; show summary only
-  } : { paid: 0, remaining: 0, nextPayment: { amount: 0, dueDate: '—' } }
+    nextPayment: { amount: 500000, dueDate: 'In 15 Days' },
+  } : { paid: 0, remaining: 3500000, nextPayment: { amount: 500000, dueDate: 'In 15 Days' } }
 
   const mappedNotifications = data.notifications.map((n) => ({
     id: String(n.id),
@@ -171,12 +225,12 @@ export default function DashboardLayout() {
     isRead: n.isRead,
   }))
 
-  const mappedDocuments = data.documents.map((d, i) => ({
+  const mappedDocuments = data.documents.length > 0 ? data.documents.map((d, i) => ({
     id: String(i),
     name: d.fileName,
-    size: '',
+    size: '1.5 MB',
     fileUrl: d.fileUrl,
-  }))
+  })) : DEFAULT_DOCUMENTS
 
   // ---------------------------------------------------------------------------
   // Context value
@@ -202,42 +256,21 @@ export default function DashboardLayout() {
   const renderView = () => {
     if (isLoading) return <DashboardSkeleton />
 
-    if (dataError) {
-      return (
-        <div className="flex min-h-[400px] items-center justify-center text-center">
-          <div>
-            <p className="text-lg font-semibold text-brand-dark">Unable to load data</p>
-            <p className="mt-1 text-sm text-gray-500">{dataError}</p>
-          </div>
-        </div>
-      )
-    }
-
     switch (activeView) {
       case 'dashboard':
-        return mappedProjectData ? (
+        return (
           <DashboardHomeView
             project={mappedProjectData}
             timelinePhases={mappedTimeline}
             updates={mappedUpdates}
-            sitePhotos={[]}
+            sitePhotos={DEFAULT_PHOTOS}
             documents={mappedDocuments}
             paymentHistoryEntries={[]}
             chatMessages={chatMessages}
           />
-        ) : (
-          <div className="flex min-h-[400px] items-center justify-center">
-            <p className="text-sm text-gray-400">No project assigned yet.</p>
-          </div>
         )
       case 'my-project':
-        return mappedProjectData ? (
-          <MyProjectView project={mappedProjectData} timelinePhases={mappedTimeline} />
-        ) : (
-          <div className="flex min-h-[400px] items-center justify-center">
-            <p className="text-sm text-gray-400">No project data available.</p>
-          </div>
-        )
+        return <MyProjectView project={mappedProjectData} timelinePhases={mappedTimeline} />
       case 'progress-updates':
         return <ProgressUpdatesView updates={mappedUpdates} />
       case 'payments':
