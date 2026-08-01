@@ -1,0 +1,65 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply scroll-smooth font-sans antialiased;
+  }
+
+  body {
+    @apply m-0 overflow-x-hidden bg-brand-cream text-brand-dark;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-heading;
+  }
+}
+
+@layer components {
+  .card-light {
+    @apply rounded-card border border-border-light bg-white p-6 shadow-sm;
+  }
+
+  .card-dark {
+    @apply rounded-card border border-white/[0.08] bg-brand-darkCard p-6;
+  }
+
+  .icon-badge {
+    @apply flex h-11 w-11 items-center justify-center rounded-full bg-brand-gold/15 text-brand-gold;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center rounded-button bg-brand-gold px-5 py-2.5 font-sans text-sm font-medium text-brand-dark transition-colors hover:bg-brand-goldLight;
+  }
+
+  .btn-secondary-dark {
+    @apply inline-flex items-center justify-center rounded-button border-[1.5px] border-white/30 bg-transparent px-5 py-2.5 font-sans text-sm font-medium text-white transition-colors hover:border-white/50;
+  }
+
+  .btn-secondary-light {
+    @apply inline-flex items-center justify-center rounded-button border-[1.5px] border-brand-dark/20 bg-transparent px-5 py-2.5 font-sans text-sm font-medium text-brand-dark transition-colors hover:border-brand-dark/40;
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  .interactive-focus {
+    @apply outline-none transition-colors focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-2 focus-visible:ring-offset-brand-cream;
+  }
+
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
+}

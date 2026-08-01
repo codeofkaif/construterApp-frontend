@@ -1,0 +1,48 @@
+import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { AuthProvider } from './context/AuthContext'
+import ProtectedRoute from './components/ProtectedRoute'
+import DashboardPage from './pages/DashboardPage'
+import AdminPage from './pages/AdminPage'
+import LoginPage from './pages/LoginPage'
+import LandingPage from './pages/LandingPage'
+import ProjectDetailPage from './pages/ProjectDetailPage'
+import ServiceDetailPage from './pages/ServiceDetailPage'
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          {/* Public routes */}
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/services/:slug" element={<ServiceDetailPage />} />
+          <Route path="/projects/:slug" element={<ProjectDetailPage />} />
+
+          {/* Client dashboard — authenticated users only (redirects to /login if not logged in) */}
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <DashboardPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Admin panel — ADMIN role required */}
+          {/* Non-admin logged-in users → /dashboard  */}
+          {/* Logged-out users → /login              */}
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute requiredRole="ADMIN">
+                <AdminPage />
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
+  )
+}
+
