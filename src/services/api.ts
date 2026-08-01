@@ -44,8 +44,8 @@ async function handleResponse<T>(res: Response): Promise<T> {
     throw new ApiError(res.status, 'Server error. Please try again later.')
   }
 
-  if (res.status === 204 || res.status === 201) {
-    // No content / Created with no body
+  if (res.status === 204) {
+    // No content
     return undefined as T
   }
 
