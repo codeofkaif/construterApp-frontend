@@ -62,4 +62,16 @@
   .touch-target {
     @apply min-h-[44px] min-w-[44px];
   }
+
+  .admin-input {
+    @apply rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/25 outline-none transition-colors focus:border-brand-gold/50 focus:ring-1 focus:ring-brand-gold/30;
+  }
+
+  .admin-input option {
+    @apply bg-[#1a1c23] text-white;
+  }
+
+  .admin-label {
+    @apply mb-1 block text-xs font-semibold uppercase tracking-wide text-white/40;
+  }
 }

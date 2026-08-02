@@ -10,6 +10,11 @@ import AdminNotificationsView from './views/AdminNotificationsView'
 import AdminLeadsView from './views/AdminLeadsView'
 import AdminLogoutView from './views/AdminLogoutView'
 import AdminPlaceholderView from './views/AdminPlaceholderView'
+import AdminHomepageView from './views/AdminHomepageView'
+import AdminServicesView from './views/AdminServicesView'
+import AdminPortfolioView from './views/AdminPortfolioView'
+import AdminSiteContentView from './views/AdminSiteContentView'
+import AdminAddClientView from './views/AdminAddClientView'
 import { Settings, Wallet } from 'lucide-react'
 
 // ---------------------------------------------------------------------------
@@ -62,10 +67,25 @@ export default function AdminLayout() {
   // --- render current view ---
   const renderView = () => {
     switch (activeView) {
+      case 'homepage':
+        return <AdminHomepageView />
+      case 'services':
+        return <AdminServicesView />
+      case 'portfolio':
+        return <AdminPortfolioView />
+      case 'site-content':
+        return <AdminSiteContentView />
+      case 'add-client':
+        return (
+          <AdminAddClientView
+            onCancel={() => setActiveView('clients')}
+            onSuccess={() => setActiveView('clients')}
+          />
+        )
       case 'overview':
         return <AdminOverviewView />
       case 'clients':
-        return <AdminClientsView />
+        return <AdminClientsView onNavigateToAddClient={() => setActiveView('add-client')} />
       case 'send-update':
         return <AdminSendUpdateView />
       case 'notifications':

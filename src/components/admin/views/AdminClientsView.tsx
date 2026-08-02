@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { Search, X } from 'lucide-react'
+import { Plus, Search, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useAdminData } from '../../../hooks/useAdminData'
 import { adminService, type AdminProjectListItem } from '../../../services/adminService'
@@ -226,7 +226,11 @@ function EditDrawer({
 // Main view
 // ---------------------------------------------------------------------------
 
-export default function AdminClientsView() {
+export default function AdminClientsView({
+  onNavigateToAddClient,
+}: {
+  onNavigateToAddClient?: () => void
+}) {
   const { data, isLoading, refetch } = useAdminData()
   const clients = data.projects
 
@@ -258,21 +262,36 @@ export default function AdminClientsView() {
           </p>
         </div>
 
-        {/* Search */}
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/30" />
-          <input
-            ref={searchRef}
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name…"
-            className="h-10 w-56 rounded-button border border-white/10 bg-white/5 pl-9 pr-3 text-sm text-white placeholder:text-white/30 focus:border-brand-gold/50 focus:outline-none focus:ring-1 focus:ring-brand-gold/20 sm:w-64"
-          />
-          {search && (
-            <button type="button" onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-white/30 hover:text-white">
-              <X className="h-3.5 w-3.5" />
-            </button>
+        {/* Actions */}
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/30" />
+            <input
+              ref={searchRef}
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by name…"
+              className="h-10 w-56 rounded-button border border-white/10 bg-white/5 pl-9 pr-3 text-sm text-white placeholder:text-white/30 focus:border-brand-gold/50 focus:outline-none focus:ring-1 focus:ring-brand-gold/20 sm:w-64"
+            />
+            {search && (
+              <button type="button" onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-white/30 hover:text-white">
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+
+          {onNavigateToAddClient && (
+            <motion.button
+              type="button"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={onNavigateToAddClient}
+              className="inline-flex items-center gap-2 rounded-button bg-brand-gold px-4 py-2.5 text-sm font-semibold text-brand-dark hover:bg-brand-goldLight"
+            >
+              <Plus className="h-4 w-4" />
+              New Client
+            </motion.button>
           )}
         </div>
       </div>

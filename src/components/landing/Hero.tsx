@@ -1,44 +1,11 @@
 import { animate, motion, useInView } from 'framer-motion'
-import {
-  ArrowRight,
-  Award,
-  Building2,
-  Phone,
-  Smile,
-  Users,
-} from 'lucide-react'
+import { ArrowRight, Phone } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import { LUCIDE_ICON_MAP, useHomepage } from '../../context/HomepageContext'
 
 type HeroProps = {
   onOpenConsultation: () => void
 }
-
-const stats = [
-  {
-    icon: Building2,
-    value: 120,
-    suffix: '+',
-    label: 'Projects Completed',
-  },
-  {
-    icon: Users,
-    value: 10,
-    suffix: '+',
-    label: 'Years Experience',
-  },
-  {
-    icon: Smile,
-    value: 50,
-    suffix: '+',
-    label: 'Happy Families',
-  },
-  {
-    icon: Award,
-    value: 98,
-    suffix: '%',
-    label: 'Client Satisfaction',
-  },
-] as const
 
 function CountUpNumber({
   value,
@@ -53,13 +20,11 @@ function CountUpNumber({
 
   useEffect(() => {
     if (!isInView) return
-
     const controls = animate(0, value, {
       duration: 2,
       ease: 'easeOut',
       onUpdate: (latest) => setDisplay(Math.round(latest)),
     })
-
     return () => controls.stop()
   }, [isInView, value])
 
@@ -71,7 +36,15 @@ function CountUpNumber({
   )
 }
 
+// Parses "120+" → { value: 120, suffix: '+' }, "98%" → { value: 98, suffix: '%' }
+function parseNumber(raw: string): { value: number; suffix: string } {
+  const match = raw.match(/^(\d+)(.*)$/)
+  if (!match) return { value: 0, suffix: '' }
+  return { value: parseInt(match[1], 10), suffix: match[2] }
+}
+
 export default function Hero({ onOpenConsultation }: HeroProps) {
+  const { content } = useHomepage()
   const statsRef = useRef<HTMLDivElement>(null)
   const isStatsInView = useInView(statsRef, { once: true, amount: 0.4 })
 
@@ -85,8 +58,8 @@ export default function Hero({ onOpenConsultation }: HeroProps) {
       className="relative flex min-h-[85vh] flex-col overflow-hidden"
     >
       <img
-        src="https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=2400&q=80"
-        alt="Modern luxury villa at night with exterior lighting"
+        src={content.heroBgUrl}
+        alt="Hero background"
         className="absolute inset-0 h-full w-full object-cover"
       />
 
@@ -109,13 +82,12 @@ export default function Hero({ onOpenConsultation }: HeroProps) {
           </p>
 
           <h1 className="font-heading text-[36px] font-semibold leading-[1.1] sm:text-[48px] lg:text-[56px]">
-            <span className="block text-white">Building Dreams,</span>
-            <span className="block text-brand-gold">Creating Homes</span>
+            <span className="block text-white">{content.heroLine1}</span>
+            <span className="block text-brand-gold">{content.heroLine2}</span>
           </h1>
 
           <p className="mt-6 max-w-[480px] text-base leading-relaxed text-gray-200">
-            From foundation to finishing, we deliver quality construction with
-            complete transparency.
+            {content.heroSubtext}
           </p>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
@@ -148,26 +120,30 @@ export default function Hero({ onOpenConsultation }: HeroProps) {
           className="mt-10 w-full rounded-2xl border border-white/[0.08] bg-brand-dark/75 px-4 py-6 backdrop-blur-sm sm:px-6 sm:py-8 lg:absolute lg:bottom-8 lg:left-12 lg:right-12 lg:mt-0 lg:px-8"
         >
           <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4 lg:gap-4">
-            {stats.map((stat) => (
-              <div
-                key={stat.label}
-                className="flex min-w-0 flex-col items-center text-center lg:items-start lg:text-left"
-              >
-                <div className="icon-badge mb-3 h-10 w-10">
-                  <stat.icon className="h-5 w-5" strokeWidth={1.75} />
+            {content.trustStats.map((stat) => {
+              const Icon = LUCIDE_ICON_MAP[stat.iconName]
+              const { value, suffix } = parseNumber(stat.number)
+              return (
+                <div
+                  key={stat.label}
+                  className="flex min-w-0 flex-col items-center text-center lg:items-start lg:text-left"
+                >
+                  <div className="icon-badge mb-3 h-10 w-10">
+                    {Icon && <Icon className="h-5 w-5" strokeWidth={1.75} />}
+                  </div>
+                  <p className="text-2xl font-bold text-white sm:text-3xl lg:text-4xl">
+                    <CountUpNumber
+                      value={value}
+                      suffix={suffix}
+                      isInView={isStatsInView}
+                    />
+                  </p>
+                  <p className="mt-1 break-words text-xs text-white/70 sm:text-sm">
+                    {stat.label}
+                  </p>
                 </div>
-                <p className="text-2xl font-bold text-white sm:text-3xl lg:text-4xl">
-                  <CountUpNumber
-                    value={stat.value}
-                    suffix={stat.suffix}
-                    isInView={isStatsInView}
-                  />
-                </p>
-                <p className="mt-1 break-words text-xs text-white/70 sm:text-sm">
-                  {stat.label}
-                </p>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       </div>

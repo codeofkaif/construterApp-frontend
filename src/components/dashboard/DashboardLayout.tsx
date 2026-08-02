@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { DashboardProvider } from '../../context/DashboardContext'
 import { useAuth } from '../../context/AuthContext'
+import { useAppData } from '../../context/AppDataContext'
 import { type DashboardViewId } from '../../data/dashboardNav'
 import { useDashboardData } from '../../hooks/useDashboardData'
 import { dashboardService } from '../../services/dashboardService'
@@ -17,10 +18,6 @@ import NotificationsView from './NotificationsView'
 import PaymentsView from './PaymentsView'
 import ProfileView from './ProfileView'
 import ProgressUpdatesView from './ProgressUpdatesView'
-
-// ---------------------------------------------------------------------------
-// Types used internally — mapped from API responses
-// ---------------------------------------------------------------------------
 
 type TimelinePhaseStatus = 'completed' | 'in-progress' | 'pending'
 
@@ -44,16 +41,13 @@ function formatTime() {
   })
 }
 
-// ---------------------------------------------------------------------------
-// DashboardLayout
-// ---------------------------------------------------------------------------
-
 export default function DashboardLayout() {
   const { user } = useAuth()
+  const { clients, setClients } = useAppData()
 
   const {
-    data,
-    isLoading,
+    data: apiData,
+    isLoading: isApiLoading,
     markNotificationRead,
     markAllNotificationsRead,
     refreshPayments,
@@ -65,15 +59,20 @@ export default function DashboardLayout() {
   )
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
   const [isCollapsed, setIsCollapsed]   = useState(false)
-
-  // Payment state — updated after API pay call
   const [payError, setPayError] = useState<string | null>(null)
+
+  // Find client matching current user email / stable ID
+  const currentClient = clients.find(
+    (c) => c.email.toLowerCase() === (user?.email || '').toLowerCase()
+  ) || clients[0]
 
   const handleResize = useCallback(() => {
     const mode = getSidebarMode(window.innerWidth)
     setSidebarMode(mode)
-    if (mode === 'drawer') { setIsDrawerOpen(false); setIsCollapsed(true) }
-    else if (mode === 'icon') { setIsDrawerOpen(false); setIsCollapsed(true) }
+    if (mode === 'drawer' || mode === 'icon') {
+      setIsDrawerOpen(false)
+      setIsCollapsed(true)
+    }
   }, [])
 
   useEffect(() => {
@@ -87,7 +86,6 @@ export default function DashboardLayout() {
     if (sidebarMode === 'drawer') setIsDrawerOpen(false)
   }, [sidebarMode])
 
-  // Pay Now — calls real API
   const confirmPayment = useCallback(async (amount: number, method: 'UPI' | 'CARD' | 'CASH') => {
     setPayError(null)
     try {
@@ -98,16 +96,40 @@ export default function DashboardLayout() {
     }
   }, [refreshPayments])
 
-  // Notifications — optimistic via hook
-  const markRead = useCallback((id: number) => {
-    markNotificationRead(id)
-  }, [markNotificationRead])
+  const markRead = useCallback((id: string) => {
+    if (currentClient) {
+      setClients(
+        clients.map((c) =>
+          c.id === currentClient.id
+            ? {
+                ...c,
+                notifications: c.notifications.map((n) =>
+                  n.id === id ? { ...n, isRead: true } : n
+                ),
+              }
+            : c
+        )
+      )
+    }
+    markNotificationRead(Number(id) || 1)
+  }, [clients, currentClient, setClients, markNotificationRead])
 
   const markAllRead = useCallback(() => {
+    if (currentClient) {
+      setClients(
+        clients.map((c) =>
+          c.id === currentClient.id
+            ? {
+                ...c,
+                notifications: c.notifications.map((n) => ({ ...n, isRead: true })),
+              }
+            : c
+        )
+      )
+    }
     markAllNotificationsRead()
-  }, [markAllNotificationsRead])
+  }, [clients, currentClient, setClients, markAllNotificationsRead])
 
-  // Chat — no backend API, local only
   const [chatMessages, setChatMessages] = useState<{ id: string; sender: 'client' | 'engineer'; text: string; time: string }[]>([])
   const appendChatMessage = useCallback((text: string) => {
     setChatMessages((msgs) => [
@@ -116,126 +138,119 @@ export default function DashboardLayout() {
     ])
   }, [])
 
-  // ---------------------------------------------------------------------------
-  // Map API data → component-expected shapes
-  // ---------------------------------------------------------------------------
-
   const mappedUser = user
     ? { name: user.name, avatar: '', email: user.email, phone: '' }
     : { name: '', avatar: '', email: '', phone: '' }
 
-  const EMPTY_PROJECT = {
-    title: user?.name ? `${user.name}'s Construction Project` : 'Client Construction Project',
-    location: 'Project Location (Pending Admin Assignment)',
-    progress: 0,
-    lastUpdated: 'Portal Active',
-    thumbnail: '',
-    currentStage: {
-      name: 'Awaiting Admin Project Assignment',
-      status: 'Pending',
-      startedOn: '—',
-      estimatedCompletion: 'TBD',
-    },
-    nextMilestone: {
-      name: 'Initial Site Survey & Architectural Review',
-      expectedOn: 'Upcoming',
-    },
-  }
+  // Preferred reads from shared AppDataContext single source of truth for logged in client
+  const clientProject = currentClient?.project
 
-  const EMPTY_TIMELINE = [
-    { name: '1. Architecture & Site Blueprint', status: 'pending' as const, percent: 0, icon: 'layers' as const },
-    { name: '2. Foundation & Substructure', status: 'pending' as const, percent: 0, icon: 'square' as const },
-    { name: '3. RCC Frame & Brick Masonry', status: 'pending' as const, percent: 0, icon: 'brick-wall' as const },
-    { name: '4. Electrical & Plumbing Lines', status: 'pending' as const, percent: 0, icon: 'home' as const },
-    { name: '5. Interior Fitting & Handover', status: 'pending' as const, percent: 0, icon: 'sparkles' as const },
-  ]
-
-  const EMPTY_UPDATES = [
-    {
-      id: 'empty-1',
-      date: 'Today',
-      time: 'Just now',
-      description: `👋 Welcome ${user?.name || 'Client'}! Your portal is active. Daily site progress updates, photos, and structural logs will appear here once construction begins.`,
-      thumbnailUrl: '',
-    },
-  ]
-
-  const mappedTimeline = data.timeline.length > 0 ? data.timeline.map((p) => ({
-    name: p.name,
-    status: phaseStatusMap[p.status] ?? 'pending' as TimelinePhaseStatus,
-    percent: p.percent,
-    icon: 'layers' as const,
-  })) : EMPTY_TIMELINE
-
-  const mappedUpdates = data.updates.length > 0 ? data.updates.map((u, i) => ({
-    id: String(i),
-    date: new Date(u.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
-    time: new Date(u.createdAt).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true }),
-    description: u.description ?? u.title,
-    thumbnailUrl: u.thumbnailUrl ?? '',
-  })) : EMPTY_UPDATES
-
-  const mappedProjectData = (data.overview && data.project) ? {
-    title: data.project.title,
-    location: data.project.location,
-    progress: data.overview.overallProgress,
+  const mappedProjectData = clientProject ? {
+    title: clientProject.title,
+    location: clientProject.location,
+    progress: clientProject.overallProgress,
     lastUpdated: 'Live',
     thumbnail: '',
     currentStage: {
-      name: data.overview.currentStage,
+      name: clientProject.currentStage,
       status: 'In Progress',
-      startedOn: data.overview.stageStartDate,
-      estimatedCompletion: data.overview.stageEstCompletion,
+      startedOn: 'Ongoing',
+      estimatedCompletion: `${clientProject.durationMonths} Months`,
     },
     nextMilestone: {
-      name: data.overview.nextMilestoneName,
-      expectedOn: data.overview.nextMilestoneDate,
+      name: 'Next Inspection & Milestone',
+      expectedOn: 'Upcoming',
     },
-  } : EMPTY_PROJECT
+  } : {
+    title: apiData.project?.title || 'Client Construction Project',
+    location: apiData.project?.location || 'Lucknow, UP',
+    progress: apiData.overview?.overallProgress || 0,
+    lastUpdated: 'Live',
+    thumbnail: '',
+    currentStage: { name: 'In Progress', status: 'In Progress', startedOn: '—', estimatedCompletion: 'TBD' },
+    nextMilestone: { name: 'Milestone Review', expectedOn: 'Upcoming' },
+  }
 
-  const mappedPaymentData = data.paymentSummary ? {
-    paid: data.paymentSummary.paidAmount,
-    remaining: data.paymentSummary.remainingAmount,
+  const mappedTimeline = (clientProject?.timeline && clientProject.timeline.length > 0)
+    ? clientProject.timeline.map((p) => ({
+        name: p.name,
+        status: phaseStatusMap[p.status] ?? 'pending',
+        percent: p.status === 'COMPLETED' ? 100 : p.status === 'IN_PROGRESS' ? 50 : 0,
+        icon: 'layers' as const,
+      }))
+    : apiData.timeline.map((p) => ({
+        name: p.name,
+        status: phaseStatusMap[p.status] ?? 'pending',
+        percent: p.percent,
+        icon: 'layers' as const,
+      }))
+
+  const mappedUpdates = (clientProject?.updates && clientProject.updates.length > 0)
+    ? clientProject.updates.map((u) => ({
+        id: u.id,
+        date: u.date,
+        time: u.time || 'Today',
+        description: `${u.title}: ${u.description}`,
+        thumbnailUrl: u.thumbnailUrl || '',
+      }))
+    : apiData.updates.map((u, i) => ({
+        id: String(i),
+        date: new Date(u.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+        time: new Date(u.createdAt).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true }),
+        description: u.description ?? u.title,
+        thumbnailUrl: u.thumbnailUrl ?? '',
+      }))
+
+  const totalPaid = clientProject?.payments
+    ? clientProject.payments.filter((p) => p.isPaid).reduce((s, p) => s + p.amount, 0)
+    : apiData.paymentSummary?.paidAmount || 0
+
+  const totalRemaining = clientProject?.payments
+    ? clientProject.totalBudget ? clientProject.totalBudget - totalPaid : 0
+    : apiData.paymentSummary?.remainingAmount || 0
+
+  const mappedPaymentData = {
+    paid: totalPaid,
+    remaining: totalRemaining,
     nextPayment: { amount: 0, dueDate: 'No Pending Dues' },
-  } : { paid: 0, remaining: 0, nextPayment: { amount: 0, dueDate: 'No Pending Dues' } }
+  }
 
-  const mappedNotifications = data.notifications.map((n) => ({
-    id: String(n.id),
-    message: n.message,
-    timestamp: new Date(n.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }),
-    isRead: n.isRead,
-  }))
+  const mappedNotifications = (currentClient?.notifications && currentClient.notifications.length > 0)
+    ? currentClient.notifications.map((n) => ({
+        id: n.id,
+        message: n.message,
+        timestamp: n.timestamp,
+        isRead: n.isRead,
+      }))
+    : apiData.notifications.map((n) => ({
+        id: String(n.id),
+        message: n.message,
+        timestamp: new Date(n.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }),
+        isRead: n.isRead,
+      }))
 
-  const mappedDocuments = data.documents.map((d, i) => ({
+  const mappedDocuments = apiData.documents.map((d, i) => ({
     id: String(i),
     name: d.fileName,
     size: '',
     fileUrl: d.fileUrl,
   }))
 
-  // ---------------------------------------------------------------------------
-  // Context value
-  // ---------------------------------------------------------------------------
-
   const contextValue = {
     activeView,
     navigate: handleNavigate,
     paymentData: mappedPaymentData,
-    confirmPayment: () => {},  // handled at view level now
+    confirmPayment: () => {},
     notifications: mappedNotifications,
-    markNotificationRead: (id: string) => markRead(Number(id)),
+    markNotificationRead: (id: string) => markRead(id),
     markAllNotificationsRead: markAllRead,
     chatMessages,
     appendChatMessage,
-    isDashboardLoading: isLoading,
+    isDashboardLoading: isApiLoading && !currentClient,
   }
 
-  // ---------------------------------------------------------------------------
-  // Render current view
-  // ---------------------------------------------------------------------------
-
   const renderView = () => {
-    if (isLoading) return <DashboardSkeleton />
+    if (isApiLoading && !currentClient) return <DashboardSkeleton />
 
     switch (activeView) {
       case 'dashboard':
@@ -260,7 +275,7 @@ export default function DashboardLayout() {
             paymentData={mappedPaymentData}
             paymentHistoryEntries={[]}
             onConfirmPayment={confirmPayment}
-            isLoading={isLoading}
+            isLoading={isApiLoading && !currentClient}
             payError={payError}
           />
         )
@@ -272,7 +287,7 @@ export default function DashboardLayout() {
         return (
           <NotificationsView
             notifications={mappedNotifications}
-            onMarkRead={(id) => markRead(Number(id))}
+            onMarkRead={(id) => markRead(id)}
             onMarkAllRead={markAllRead}
           />
         )

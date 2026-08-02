@@ -1,16 +1,16 @@
 import { ArrowLeft, MapPin } from 'lucide-react'
 import { useState } from 'react'
 import { Link, Navigate, useParams } from 'react-router-dom'
+import { usePortfolio } from '../context/PortfolioContext'
 import ImageLightbox from '../components/landing/ImageLightbox'
-// TODO: replace with API call
-import { projectsBySlug } from '../data/mockData'
 
 export default function ProjectDetailPage() {
   const { slug } = useParams<{ slug: string }>()
+  const { projects } = usePortfolio()
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [lightboxIndex, setLightboxIndex] = useState(0)
 
-  const project = slug ? projectsBySlug[slug] : undefined
+  const project = projects.find((p) => p.slug === slug)
 
   if (!project) {
     return <Navigate to="/#projects" replace />
@@ -70,7 +70,7 @@ export default function ProjectDetailPage() {
               >
                 <img
                   src={image.url}
-                  alt={image.alt}
+                  alt={image.alt || project.title}
                   className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
                 />
               </button>

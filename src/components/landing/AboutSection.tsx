@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import { Award, Shield, Users } from 'lucide-react'
+import { useSiteContent } from '../../context/SiteContentContext'
 import ScrollReveal from './ScrollReveal'
 
 type AboutSectionProps = {
@@ -28,21 +29,23 @@ const highlights = [
 ]
 
 export default function AboutSection({ onOpenConsultation }: AboutSectionProps) {
+  const { aboutContent } = useSiteContent()
+
   return (
     <section id="about" className="bg-brand-cream px-6 py-20 lg:px-12">
       <div className="mx-auto max-w-6xl">
         <ScrollReveal>
           <p className="mb-3 text-center text-xs font-medium uppercase tracking-[0.25em] text-brand-gold">
-            About Us
+            {aboutContent.tagline}
           </p>
           <h2 className="text-center font-heading text-3xl font-semibold text-brand-dark sm:text-4xl">
-            Building Trust in Lucknow
+            {aboutContent.heading}
           </h2>
-          <p className="mx-auto mt-4 max-w-2xl text-center text-base leading-relaxed text-gray-600">
-            Adil Constructions has been transforming dreams into homes across Lucknow
-            for over a decade — delivering residential and commercial projects with
-            uncompromising quality and transparency.
-          </p>
+          <div className="mx-auto mt-4 max-w-2xl space-y-3 text-center text-base leading-relaxed text-gray-600">
+            {aboutContent.paragraphs.map((para, i) => (
+              <p key={i}>{para}</p>
+            ))}
+          </div>
         </ScrollReveal>
 
         <div className="mt-14 grid grid-cols-1 gap-6 sm:grid-cols-3">

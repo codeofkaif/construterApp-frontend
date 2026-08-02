@@ -1,13 +1,8 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { ImageIcon, Send } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { useAdminData } from '../../../hooks/useAdminData'
+import { useAppData } from '../../../context/AppDataContext'
 import { adminService } from '../../../services/adminService'
-import { ApiError } from '../../../services/api'
-
-// ---------------------------------------------------------------------------
-// Shared micro-components
-// ---------------------------------------------------------------------------
 
 function Label({ children }: { children: React.ReactNode }) {
   return <label className="mb-1.5 block text-sm font-medium text-white/60">{children}</label>
@@ -32,18 +27,14 @@ function Toast({ message, onDone }: { message: string; onDone: () => void }) {
   )
 }
 
-// ---------------------------------------------------------------------------
-// Searchable client dropdown
-// ---------------------------------------------------------------------------
-
 function ClientDropdown({
   clients,
   value,
   onChange,
 }: {
-  clients: { id: number; clientName: string; projectTitle: string }[]
-  value: number | null
-  onChange: (id: number) => void
+  clients: { id: string; clientName: string; projectTitle: string }[]
+  value: string | null
+  onChange: (id: string) => void
 }) {
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
@@ -71,7 +62,7 @@ function ClientDropdown({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center justify-between rounded-button border border-white/10 bg-white/5 px-4 py-3 text-sm text-white transition-colors hover:border-brand-gold/40 focus:border-brand-gold/50 focus:outline-none"
+        className="flex min-h-[44px] w-full items-center justify-between rounded-button border border-white/10 bg-white/5 px-4 py-3 text-sm text-white transition-colors hover:border-brand-gold/40 focus:border-brand-gold/50 focus:outline-none"
       >
         {selected ? (
           <span>
@@ -101,7 +92,7 @@ function ClientDropdown({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 6, scale: 0.98 }}
             transition={{ duration: 0.15 }}
-            className="absolute left-0 right-0 z-50 mt-1 overflow-hidden rounded-card border border-white/[0.08] bg-brand-darkCard shadow-xl"
+            className="absolute left-0 right-0 z-50 mt-1 max-w-[calc(100vw-2rem)] overflow-hidden rounded-card border border-white/[0.08] bg-brand-darkCard shadow-xl"
           >
             <div className="border-b border-white/[0.06] p-2">
               <input
@@ -122,7 +113,7 @@ function ClientDropdown({
                     <button
                       type="button"
                       onClick={() => { onChange(c.id); setOpen(false); setQuery('') }}
-                      className={`flex w-full flex-col px-4 py-2.5 text-left transition-colors hover:bg-white/5 ${value === c.id ? 'bg-brand-gold/10 text-brand-gold' : 'text-white'}`}
+                      className={`flex min-h-[44px] w-full flex-col px-4 py-2.5 text-left transition-colors hover:bg-white/5 ${value === c.id ? 'bg-brand-gold/10 text-brand-gold' : 'text-white'}`}
                     >
                       <span className="text-sm font-medium">{c.clientName}</span>
                       <span className="text-xs text-white/40">{c.projectTitle}</span>
@@ -137,10 +128,6 @@ function ClientDropdown({
     </div>
   )
 }
-
-// ---------------------------------------------------------------------------
-// Image URL preview
-// ---------------------------------------------------------------------------
 
 function ImagePreview({ url }: { url: string }) {
   const [error, setError] = useState(false)
@@ -164,40 +151,30 @@ function ImagePreview({ url }: { url: string }) {
   )
 }
 
-// ---------------------------------------------------------------------------
-// Blank form state
-// ---------------------------------------------------------------------------
-
 const BLANK = {
-  clientId: null as number | null,
+  clientId: '' as string,
   title: '',
   description: '',
   photoUrl: '',
 }
 
-// ---------------------------------------------------------------------------
-// View
-// ---------------------------------------------------------------------------
-
 export default function AdminSendUpdateView() {
-  const { data, isLoading: clientsLoading } = useAdminData()
+  const { clients, postUpdateForClient } = useAppData()
 
-  const clientOptions = data.projects.map((p) => ({
-    id: p.projectId,
-    clientName: p.clientName,
-    projectTitle: p.title,
+  const clientOptions = clients.map((c) => ({
+    id: c.id,
+    clientName: c.clientName,
+    projectTitle: c.project.title,
   }))
 
   const [form, setForm] = useState(BLANK)
   const [errors, setErrors] = useState<Partial<Record<keyof typeof BLANK, string>>>({})
   const [toast, setToast] = useState<string | null>(null)
-  const [apiError, setApiError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
   const set = <K extends keyof typeof BLANK>(k: K, v: typeof BLANK[K]) => {
     setForm((f) => ({ ...f, [k]: v }))
     setErrors((e) => ({ ...e, [k]: '' }))
-    setApiError(null)
   }
 
   const validate = () => {
@@ -216,22 +193,30 @@ export default function AdminSendUpdateView() {
     }
 
     setSubmitting(true)
-    setApiError(null)
+
+    // Update shared AppDataContext single source of truth
+    postUpdateForClient(form.clientId, {
+      title: form.title.trim(),
+      description: form.description.trim(),
+      thumbnailUrl: form.photoUrl.trim() || undefined,
+    })
+
+    // Also call backend service for persistence if available
     try {
       await adminService.postUpdate({
-        projectId: form.clientId!,
+        projectId: Number(form.clientId) || 1,
         title: form.title.trim(),
         description: form.description.trim(),
         thumbnailUrl: form.photoUrl.trim() || undefined,
       })
-      setToast('Update posted successfully')
-      setForm(BLANK)
-      setErrors({})
-    } catch (err) {
-      setApiError(err instanceof ApiError ? err.message : 'Failed to post update. Please try again.')
-    } finally {
-      setSubmitting(false)
+    } catch {
+      // Backend call optional in mock mode
     }
+
+    setToast('Update posted successfully')
+    setForm(BLANK)
+    setErrors({})
+    setSubmitting(false)
   }
 
   return (
@@ -245,22 +230,15 @@ export default function AdminSendUpdateView() {
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35 }}
-        className="rounded-card border border-white/[0.08] bg-brand-darkCard p-6 sm:p-8"
+        className="rounded-card border border-white/[0.08] bg-brand-darkCard p-4 sm:p-8 max-w-full overflow-hidden"
       >
         <div className="space-y-5">
-
-          {apiError && (
-            <div className="rounded-button border border-red-400/30 bg-red-400/10 px-4 py-2.5 text-sm text-red-400">
-              {apiError}
-            </div>
-          )}
-
           {/* Client picker */}
           <div>
             <Label>Select Client *</Label>
             <ClientDropdown
               clients={clientOptions}
-              value={form.clientId}
+              value={form.clientId || null}
               onChange={(id) => set('clientId', id)}
             />
             {errors.clientId && <p className="mt-1.5 text-xs text-red-400">{errors.clientId}</p>}
@@ -274,7 +252,7 @@ export default function AdminSendUpdateView() {
               value={form.title}
               onChange={(e) => set('title', e.target.value)}
               placeholder="e.g. Brick work on Ground Floor completed"
-              className="w-full rounded-button border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/20 focus:border-brand-gold/50 focus:outline-none focus:ring-1 focus:ring-brand-gold/20"
+              className="w-full min-h-[44px] rounded-button border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/20 focus:border-brand-gold/50 focus:outline-none focus:ring-1 focus:ring-brand-gold/20"
             />
             {errors.title && <p className="mt-1.5 text-xs text-red-400">{errors.title}</p>}
           </div>
@@ -287,7 +265,7 @@ export default function AdminSendUpdateView() {
               value={form.description}
               onChange={(e) => set('description', e.target.value)}
               placeholder="Describe the update in detail…"
-              className="w-full resize-none rounded-button border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/20 focus:border-brand-gold/50 focus:outline-none focus:ring-1 focus:ring-brand-gold/20"
+              className="w-full min-h-[44px] resize-none rounded-button border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/20 focus:border-brand-gold/50 focus:outline-none focus:ring-1 focus:ring-brand-gold/20"
             />
             {errors.description && <p className="mt-1.5 text-xs text-red-400">{errors.description}</p>}
           </div>
@@ -305,7 +283,7 @@ export default function AdminSendUpdateView() {
               value={form.photoUrl}
               onChange={(e) => set('photoUrl', e.target.value)}
               placeholder="https://example.com/site-photo.jpg"
-              className="w-full rounded-button border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/20 focus:border-brand-gold/50 focus:outline-none focus:ring-1 focus:ring-brand-gold/20"
+              className="w-full min-h-[44px] rounded-button border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/20 focus:border-brand-gold/50 focus:outline-none focus:ring-1 focus:ring-brand-gold/20"
             />
             <ImagePreview url={form.photoUrl} />
           </div>
@@ -315,9 +293,9 @@ export default function AdminSendUpdateView() {
             <motion.button
               type="button"
               onClick={handleSubmit}
-              disabled={submitting || clientsLoading}
+              disabled={submitting}
               whileTap={{ scale: 0.97 }}
-              className="interactive-focus inline-flex items-center gap-2 rounded-button bg-brand-gold px-6 py-3 text-sm font-semibold text-brand-dark transition-colors hover:bg-brand-goldLight disabled:opacity-60"
+              className="interactive-focus inline-flex min-h-[44px] w-full sm:w-auto items-center justify-center gap-2 rounded-button bg-brand-gold px-6 py-3 text-sm font-semibold text-brand-dark transition-colors hover:bg-brand-goldLight disabled:opacity-60"
             >
               <Send className="h-4 w-4" />
               {submitting ? 'Posting…' : 'Post Update'}

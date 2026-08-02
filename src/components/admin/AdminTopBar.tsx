@@ -1,7 +1,8 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { ChevronDown, LogOut, Menu, Settings, User } from 'lucide-react'
+import { ChevronDown, LogOut, Menu, RefreshCw, Settings, User } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
+import { useAppData } from '../../context/AppDataContext'
 import type { AdminViewId } from '../../data/adminNav'
 
 type AdminTopBarProps = {
@@ -16,8 +17,19 @@ export default function AdminTopBar({
   onNavigate,
 }: AdminTopBarProps) {
   const { user } = useAuth()
+  const { lastUpdatedTime } = useAppData()
+  const [secondsAgo, setSecondsAgo] = useState(0)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const userMenuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const updateDiff = () => {
+      setSecondsAgo(Math.max(0, Math.floor((Date.now() - lastUpdatedTime) / 1000)))
+    }
+    updateDiff()
+    const timer = setInterval(updateDiff, 1000)
+    return () => clearInterval(timer)
+  }, [lastUpdatedTime])
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -51,6 +63,12 @@ export default function AdminTopBar({
           )}
 
           <h1 className="text-xl font-bold text-white">Admin Panel</h1>
+
+          {/* Last updated badge */}
+          <div className="hidden sm:flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-white/60">
+            <RefreshCw className="h-3 w-3 text-brand-gold animate-spin-slow" />
+            <span>Last updated {secondsAgo === 0 ? 'just now' : `${secondsAgo}s ago`}</span>
+          </div>
         </div>
 
         {/* Right — avatar + name + dropdown */}

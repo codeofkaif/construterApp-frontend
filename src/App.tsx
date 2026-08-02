@@ -1,5 +1,10 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
+import { HomepageProvider } from './context/HomepageContext'
+import { ServicesProvider } from './context/ServicesContext'
+import { PortfolioProvider } from './context/PortfolioContext'
+import { SiteContentProvider } from './context/SiteContentContext'
+import { AppDataProvider } from './context/AppDataContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import DashboardPage from './pages/DashboardPage'
 import AdminPage from './pages/AdminPage'
@@ -10,8 +15,13 @@ import ServiceDetailPage from './pages/ServiceDetailPage'
 
 export default function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
+    <HomepageProvider>
+      <ServicesProvider>
+        <PortfolioProvider>
+          <SiteContentProvider>
+            <AppDataProvider>
+              <AuthProvider>
+                <BrowserRouter>
         <Routes>
           {/* Public routes */}
           <Route path="/" element={<LandingPage />} />
@@ -41,8 +51,13 @@ export default function App() {
             }
           />
         </Routes>
-      </BrowserRouter>
-    </AuthProvider>
+                </BrowserRouter>
+              </AuthProvider>
+            </AppDataProvider>
+          </SiteContentProvider>
+        </PortfolioProvider>
+      </ServicesProvider>
+    </HomepageProvider>
   )
 }
 

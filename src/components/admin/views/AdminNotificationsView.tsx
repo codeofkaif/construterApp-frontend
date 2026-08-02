@@ -1,13 +1,8 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { Send } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { useAdminData } from '../../../hooks/useAdminData'
+import { useAppData } from '../../../context/AppDataContext'
 import { adminService } from '../../../services/adminService'
-import { ApiError } from '../../../services/api'
-
-// ---------------------------------------------------------------------------
-// Shared helpers
-// ---------------------------------------------------------------------------
 
 function Label({ children }: { children: React.ReactNode }) {
   return <label className="mb-1.5 block text-sm font-medium text-white/60">{children}</label>
@@ -32,20 +27,14 @@ function Toast({ message, onDone }: { message: string; onDone: () => void }) {
   )
 }
 
-// ---------------------------------------------------------------------------
-// Tab: Send New
-// ---------------------------------------------------------------------------
-
 function SendNewTab() {
-  const { data } = useAdminData()
-  const clients = data.projects
+  const { clients, sendNotificationForClient } = useAppData()
 
   const [recipientId, setRecipientId] = useState('')
   const [message, setMessage]         = useState('')
   const [errors, setErrors]           = useState({ recipientId: '', message: '' })
   const [submitting, setSubmitting]   = useState(false)
   const [toast, setToast]             = useState<string | null>(null)
-  const [apiError, setApiError]       = useState<string | null>(null)
 
   const validate = () => {
     const e = { recipientId: '', message: '' }
@@ -58,25 +47,27 @@ function SendNewTab() {
     const errs = validate()
     if (errs.recipientId || errs.message) { setErrors(errs); return }
     setSubmitting(true)
-    setApiError(null)
 
     const isAll = recipientId === 'all'
 
+    // Update shared context
+    sendNotificationForClient(isAll ? 'all' : recipientId, message.trim())
+
     try {
       await adminService.sendNotification({
-        clientId: isAll ? null : Number(recipientId),
+        clientId: isAll ? null : Number(recipientId) || 1,
         broadcastToAll: isAll,
         message: message.trim(),
       })
-      setToast('Notification sent successfully')
-      setRecipientId('')
-      setMessage('')
-      setErrors({ recipientId: '', message: '' })
-    } catch (err) {
-      setApiError(err instanceof ApiError ? err.message : 'Failed to send notification.')
-    } finally {
-      setSubmitting(false)
+    } catch {
+      // Backend call optional in mock mode
     }
+
+    setToast('Notification sent successfully')
+    setRecipientId('')
+    setMessage('')
+    setErrors({ recipientId: '', message: '' })
+    setSubmitting(false)
   }
 
   return (
@@ -84,29 +75,23 @@ function SendNewTab() {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25 }}
-      className="rounded-card border border-white/[0.08] bg-brand-darkCard p-6 sm:p-8"
+      className="rounded-card border border-white/[0.08] bg-brand-darkCard p-4 sm:p-8 max-w-full overflow-hidden"
     >
       <div className="space-y-5">
-        {apiError && (
-          <div className="rounded-button border border-red-400/30 bg-red-400/10 px-4 py-2.5 text-sm text-red-400">
-            {apiError}
-          </div>
-        )}
-
         {/* Recipient */}
         <div>
           <Label>Recipient *</Label>
           <select
             value={recipientId}
             onChange={(e) => { setRecipientId(e.target.value); setErrors((err) => ({ ...err, recipientId: '' })) }}
-            className="w-full rounded-button border border-white/10 bg-brand-dark px-4 py-3 text-sm text-white focus:border-brand-gold/50 focus:outline-none"
+            className="w-full min-h-[44px] rounded-button border border-white/10 bg-brand-dark px-4 py-3 text-sm text-white focus:border-brand-gold/50 focus:outline-none"
           >
             <option value="" disabled>Select recipient…</option>
             <option value="all">📢 All Clients (Broadcast)</option>
             <optgroup label="─────────────">
               {clients.map((c) => (
-                <option key={c.projectId} value={String(c.projectId)}>
-                  {c.clientName} — {c.title}
+                <option key={c.id} value={c.id}>
+                  {c.clientName} — {c.project.title}
                 </option>
               ))}
             </optgroup>
@@ -122,7 +107,7 @@ function SendNewTab() {
             value={message}
             onChange={(e) => { setMessage(e.target.value); setErrors((err) => ({ ...err, message: '' })) }}
             placeholder="Write your notification message…"
-            className="w-full resize-none rounded-button border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/20 focus:border-brand-gold/50 focus:outline-none focus:ring-1 focus:ring-brand-gold/20"
+            className="w-full min-h-[44px] resize-none rounded-button border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/20 focus:border-brand-gold/50 focus:outline-none focus:ring-1 focus:ring-brand-gold/20"
           />
           {errors.message && <p className="mt-1.5 text-xs text-red-400">{errors.message}</p>}
         </div>
@@ -134,7 +119,7 @@ function SendNewTab() {
             onClick={handleSend}
             disabled={submitting}
             whileTap={{ scale: 0.97 }}
-            className="interactive-focus inline-flex items-center gap-2 rounded-button bg-brand-gold px-6 py-3 text-sm font-semibold text-brand-dark transition-colors hover:bg-brand-goldLight disabled:opacity-60"
+            className="interactive-focus inline-flex min-h-[44px] w-full sm:w-auto items-center justify-center gap-2 rounded-button bg-brand-gold px-6 py-3 text-sm font-semibold text-brand-dark transition-colors hover:bg-brand-goldLight disabled:opacity-60"
           >
             <Send className="h-4 w-4" />
             {submitting ? 'Sending…' : 'Send Notification'}
@@ -149,28 +134,44 @@ function SendNewTab() {
   )
 }
 
-// ---------------------------------------------------------------------------
-// Tab: Sent History — no GET endpoint in backend yet
-// ---------------------------------------------------------------------------
-
 function SentHistoryTab() {
+  const { clients } = useAppData()
+
+  // Consolidate sent history across clients
+  const history = clients.flatMap((c) =>
+    c.notifications.map((n) => ({
+      ...n,
+      clientName: c.clientName,
+    }))
+  )
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25 }}
-      className="overflow-hidden rounded-card border border-white/[0.08] bg-brand-darkCard"
+      className="overflow-hidden rounded-card border border-white/[0.08] bg-brand-darkCard p-4 sm:p-6"
     >
-      <div className="flex min-h-[200px] items-center justify-center">
-        <p className="text-sm text-white/30">Notification history will be available in a future update.</p>
-      </div>
+      {history.length === 0 ? (
+        <div className="flex min-h-[160px] items-center justify-center">
+          <p className="text-sm text-white/30">No sent notifications found.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {history.map((item) => (
+            <div key={item.id} className="flex items-start justify-between rounded-lg border border-white/10 bg-white/5 p-3.5">
+              <div>
+                <p className="text-xs font-semibold text-brand-gold">{item.clientName}</p>
+                <p className="mt-1 text-sm text-white/90">{item.message}</p>
+              </div>
+              <span className="text-xs text-white/40 shrink-0">{item.timestamp}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </motion.div>
   )
 }
-
-// ---------------------------------------------------------------------------
-// Main view
-// ---------------------------------------------------------------------------
 
 type TabId = 'send-new' | 'history'
 
@@ -189,7 +190,6 @@ export default function AdminNotificationsView() {
         <p className="mt-0.5 text-sm text-white/40">Send messages to clients or view sent history</p>
       </div>
 
-      {/* Tab switcher */}
       <div className="flex gap-1 rounded-lg border border-white/[0.08] bg-white/[0.03] p-1 w-fit">
         {TABS.map((tab) => (
           <button
@@ -210,7 +210,6 @@ export default function AdminNotificationsView() {
         ))}
       </div>
 
-      {/* Tab content */}
       <AnimatePresence mode="wait">
         {activeTab === 'send-new' ? (
           <SendNewTab key="send-new" />

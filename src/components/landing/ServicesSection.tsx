@@ -1,64 +1,10 @@
 import { motion } from 'framer-motion'
-import {
-  Building2,
-  Home,
-  Key,
-  PaintRoller,
-  Ruler,
-  Sofa,
-  type LucideIcon,
-} from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { SERVICE_ICON_MAP, useServices } from '../../context/ServicesContext'
 import ScrollReveal, { StaggerReveal, staggerItem } from './ScrollReveal'
 
-type Service = {
-  slug: string
-  icon: LucideIcon
-  title: string
-  description: string
-}
-
-const services: Service[] = [
-  {
-    slug: 'house-construction',
-    icon: Home,
-    title: 'House Construction',
-    description: 'Complete construction solutions for your dream home.',
-  },
-  {
-    slug: 'renovation',
-    icon: PaintRoller,
-    title: 'Renovation',
-    description: 'Transform your existing space into something extraordinary.',
-  },
-  {
-    slug: 'interior-design',
-    icon: Sofa,
-    title: 'Interior Design',
-    description: 'Beautiful interiors that match your style and personality.',
-  },
-  {
-    slug: 'architectural-planning',
-    icon: Ruler,
-    title: 'Architectural Planning',
-    description: 'Modern and functional designs by expert architects.',
-  },
-  {
-    slug: 'turnkey-projects',
-    icon: Key,
-    title: 'Turnkey Projects',
-    description: 'End-to-end project management with complete peace of mind.',
-  },
-  {
-    slug: 'commercial-buildings',
-    icon: Building2,
-    title: 'Commercial Buildings',
-    description: 'High-quality construction for commercial spaces and buildings.',
-  },
-]
-
-function ServiceCard({ service }: { service: Service }) {
-  const Icon = service.icon
+function ServiceCard({ service }: { service: import('../../context/ServicesContext').Service }) {
+  const Icon = SERVICE_ICON_MAP[service.iconName]
 
   return (
     <motion.div variants={staggerItem} whileHover={{ y: -4 }} transition={{ duration: 0.2 }}>
@@ -66,7 +12,7 @@ function ServiceCard({ service }: { service: Service }) {
         to={`/services/${service.slug}`}
         className="group block h-full rounded-xl border border-white/[0.08] bg-brand-darkCard p-6 transition-colors duration-200 hover:border-brand-gold active:scale-[0.99]"
       >
-        <Icon className="mb-5 h-8 w-8 text-brand-gold" strokeWidth={1.5} />
+        {Icon && <Icon className="mb-5 h-8 w-8 text-brand-gold" strokeWidth={1.5} />}
         <h3 className="mb-2 text-lg font-bold text-white">{service.title}</h3>
         <p className="text-sm leading-relaxed text-white/70">{service.description}</p>
       </Link>
@@ -75,6 +21,8 @@ function ServiceCard({ service }: { service: Service }) {
 }
 
 export default function ServicesSection() {
+  const { services } = useServices()
+
   return (
     <section id="services" className="bg-brand-dark px-6 py-20 lg:px-12">
       <div className="mx-auto max-w-6xl">
@@ -91,7 +39,7 @@ export default function ServicesSection() {
 
         <StaggerReveal className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {services.map((service) => (
-            <ServiceCard key={service.slug} service={service} />
+            <ServiceCard key={service.id} service={service} />
           ))}
         </StaggerReveal>
       </div>
