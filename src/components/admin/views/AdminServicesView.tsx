@@ -302,38 +302,37 @@ function ServiceRow({
 // ---------------------------------------------------------------------------
 
 export default function AdminServicesView() {
-  const { services, setServices } = useServices()
+  const { services, addService, updateService, deleteService, reorderServices } = useServices()
   const [modalTarget, setModalTarget] = useState<Service | 'new' | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Service | null>(null)
 
   const openAdd = () => setModalTarget('new')
   const openEdit = (s: Service) => setModalTarget(s)
 
-  const handleSave = (data: Omit<Service, 'id'>) => {
-    if (modalTarget === 'new') {
-      setServices([...services, { ...data, id: crypto.randomUUID() }])
-    } else if (modalTarget) {
-      setServices(
-        services.map((s) =>
-          s.id === (modalTarget as Service).id ? { ...s, ...data } : s,
-        ),
-      )
+  const handleSave = async (data: Omit<Service, 'id' | '_backendId'>) => {
+    try {
+      if (modalTarget === 'new') {
+        await addService(data)
+      } else if (modalTarget) {
+        await updateService((modalTarget as Service).id, data)
+      }
+    } finally {
+      setModalTarget(null)
     }
-    setModalTarget(null)
   }
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!deleteTarget) return
-    setServices(services.filter((s) => s.id !== deleteTarget.id))
+    await deleteService(deleteTarget.id)
     setDeleteTarget(null)
   }
 
-  const handleMove = (index: number, dir: -1 | 1) => {
+  const handleMove = async (index: number, dir: -1 | 1) => {
     const next = [...services]
     const target = index + dir
     if (target < 0 || target >= next.length) return
     ;[next[index], next[target]] = [next[target], next[index]]
-    setServices(next)
+    await reorderServices(next)
   }
 
   return (

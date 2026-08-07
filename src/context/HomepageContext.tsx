@@ -3,6 +3,8 @@ import {
   useContext,
   useState,
   useMemo,
+  useEffect,
+  useCallback,
   type ReactNode,
 } from 'react'
 import {
@@ -12,6 +14,7 @@ import {
   Award,
   type LucideIcon,
 } from 'lucide-react'
+import { adminContent, publicContent } from '../services/contentService'
 
 export type TrustStat = {
   iconName: string
@@ -49,6 +52,8 @@ const DEFAULT_CONTENT: HomepageContent = {
   ],
 }
 
+const HOMEPAGE_KEY = 'homepage'
+
 type HomepageContextValue = {
   content: HomepageContent
   setContent: (c: HomepageContent) => void
@@ -57,8 +62,30 @@ type HomepageContextValue = {
 const HomepageContext = createContext<HomepageContextValue | null>(null)
 
 export function HomepageProvider({ children }: { children: ReactNode }) {
-  const [content, setContent] = useState<HomepageContent>(DEFAULT_CONTENT)
-  const value = useMemo(() => ({ content, setContent }), [content])
+  const [content, setContentState] = useState<HomepageContent>(DEFAULT_CONTENT)
+  const [backendAvailable, setBackendAvailable] = useState(false)
+
+  useEffect(() => {
+    publicContent.getConfig(HOMEPAGE_KEY)
+      .then((raw) => {
+        if (raw) {
+          const data: HomepageContent = JSON.parse(raw)
+          setContentState(data)
+        }
+        setBackendAvailable(true)
+      })
+      .catch(() => {})
+  }, [])
+
+  const setContent = useCallback((c: HomepageContent) => {
+    setContentState(c)
+    if (backendAvailable) {
+      adminContent.saveConfig(HOMEPAGE_KEY, JSON.stringify(c)).catch(console.error)
+    }
+  }, [backendAvailable])
+
+  const value = useMemo(() => ({ content, setContent }), [content, setContent])
+
   return (
     <HomepageContext.Provider value={value}>
       {children}

@@ -344,45 +344,25 @@ function ConfirmDialog({
 // ---------------------------------------------------------------------------
 
 export default function AdminPortfolioView() {
-  const { projects, setProjects, toggleFeatured } = usePortfolio()
+  const { projects, addProject, updateProject, deleteProject, toggleFeatured } = usePortfolio()
   const [modalTarget, setModalTarget] = useState<PortfolioProject | 'new' | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<PortfolioProject | null>(null)
 
-  const handleSave = (data: Omit<PortfolioProject, 'id' | 'createdAt'>) => {
-    if (modalTarget === 'new') {
-      const newProj: PortfolioProject = {
-        ...data,
-        id: crypto.randomUUID(),
-        createdAt: Date.now(),
+  const handleSave = async (data: Omit<PortfolioProject, 'id' | 'createdAt'>) => {
+    try {
+      if (modalTarget === 'new') {
+        await addProject(data)
+      } else if (modalTarget) {
+        await updateProject((modalTarget as PortfolioProject).id, data)
       }
-      if (data.featured) {
-        setProjects([
-          ...projects.map((p) => ({ ...p, featured: false })),
-          newProj,
-        ])
-      } else {
-        setProjects([...projects, newProj])
-      }
-    } else if (modalTarget) {
-      const targetId = (modalTarget as PortfolioProject).id
-      setProjects(
-        projects.map((p) => {
-          if (p.id === targetId) {
-            return { ...p, ...data }
-          }
-          if (data.featured) {
-            return { ...p, featured: false }
-          }
-          return p
-        })
-      )
+    } finally {
+      setModalTarget(null)
     }
-    setModalTarget(null)
   }
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!deleteTarget) return
-    setProjects(projects.filter((p) => p.id !== deleteTarget.id))
+    await deleteProject(deleteTarget.id)
     setDeleteTarget(null)
   }
 
