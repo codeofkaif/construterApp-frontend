@@ -1,27 +1,19 @@
 import {
   createContext,
   useContext,
-  useState,
   useMemo,
   useEffect,
   useCallback,
   type ReactNode,
 } from 'react'
+import { useLocalStorage } from '../hooks/useLocalStorage'
 import { adminContent, publicContent, type PortfolioItemDto } from '../services/contentService'
 
-export type ProjectStat = {
-  value: string
-  label: string
-}
-
-export type ProjectImage = {
-  url: string
-  alt: string
-}
-
+export type ProjectStat = { value: string; label: string }
+export type ProjectImage = { url: string; alt: string }
 export type PortfolioProject = {
-  id: string          // string for backward compat; backend id stored here as string
-  _backendId?: number // actual numeric backend id
+  id: string
+  _backendId?: number
   slug: string
   title: string
   location: string
@@ -31,7 +23,6 @@ export type PortfolioProject = {
   images: ProjectImage[]
 }
 
-// Convert backend DTO → frontend type
 function fromDto(dto: PortfolioItemDto): PortfolioProject {
   return {
     id: String(dto.id),
@@ -46,7 +37,6 @@ function fromDto(dto: PortfolioItemDto): PortfolioProject {
   }
 }
 
-// Convert frontend type → DTO payload
 function toDto(p: Omit<PortfolioProject, 'id' | 'createdAt'>, sortOrder = 0): Omit<PortfolioItemDto, 'id' | 'createdAt'> {
   return {
     title: p.title,
@@ -74,10 +64,7 @@ const DEFAULT_PROJECTS: PortfolioProject[] = [
       { value: '₹38 Lakh', label: 'Budget' },
     ],
     images: [
-      {
-        url: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1400&q=80',
-        alt: 'Modern luxury villa exterior',
-      },
+      { url: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1400&q=80', alt: 'Modern luxury villa exterior' },
     ],
   },
 ]
@@ -95,86 +82,79 @@ type PortfolioContextValue = {
 const PortfolioContext = createContext<PortfolioContextValue | null>(null)
 
 export function PortfolioProvider({ children }: { children: ReactNode }) {
-  const [projects, setProjectsState] = useState<PortfolioProject[]>(DEFAULT_PROJECTS)
-  const [loading, setLoading] = useState(true)
-  const [backendAvailable, setBackendAvailable] = useState(false)
+  const [projects, setProjectsLS] = useLocalStorage<PortfolioProject[]>('portfolio-projects', DEFAULT_PROJECTS)
+  const [loading, setLoading] = useLocalStorage<boolean>('portfolio-loading', true)
 
-  // Fetch from backend on mount — use public endpoint (no auth needed)
+  // On mount: load from backend (backend is source of truth if available)
   useEffect(() => {
     publicContent.getPortfolio()
       .then((dtos) => {
         if (dtos && dtos.length > 0) {
-          setProjectsState(dtos.map(fromDto))
-          setBackendAvailable(true)
-        } else if (dtos && dtos.length === 0) {
-          // Backend is up but empty — keep defaults visible but flag backend as available
-          setBackendAvailable(true)
+          setProjectsLS(dtos.map(fromDto))
         }
       })
-      .catch(() => {
-        // Backend unavailable — silently use defaults
-      })
+      .catch(() => {})
       .finally(() => setLoading(false))
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const setProjects = useCallback((p: PortfolioProject[]) => {
-    setProjectsState(p)
-  }, [])
+  const setProjects = useCallback((p: PortfolioProject[]) => setProjectsLS(p), [setProjectsLS])
 
   const addProject = useCallback(async (p: Omit<PortfolioProject, 'id' | 'createdAt'>) => {
-    if (backendAvailable) {
+    // Optimistically add to localStorage immediately
+    const tempId = crypto.randomUUID()
+    const newProj: PortfolioProject = { ...p, id: tempId, createdAt: Date.now() }
+    const updated = p.featured
+      ? [...projects.map(x => ({ ...x, featured: false })), newProj]
+      : [...projects, newProj]
+    setProjectsLS(updated)
+
+    // Sync to backend
+    try {
       const created = await adminContent.createPortfolio(toDto(p, 0))
-      setProjectsState((prev) => [...prev.filter(x => !x.id.startsWith('default')), fromDto(created)])
-    } else {
-      setProjectsState((prev) => [
-        ...prev,
-        { ...p, id: crypto.randomUUID(), createdAt: Date.now() },
-      ])
-    }
-  }, [backendAvailable])
+      // Replace temp entry with backend entry
+      setProjectsLS((prev: PortfolioProject[]) =>
+        prev.map(x => x.id === tempId ? fromDto(created) : x)
+      )
+    } catch {}
+  }, [projects, setProjectsLS])
 
   const updateProject = useCallback(async (id: string, p: Omit<PortfolioProject, 'id' | 'createdAt'>) => {
     const existing = projects.find(x => x.id === id)
-    if (backendAvailable && existing?._backendId) {
-      const updated = await adminContent.updatePortfolio(existing._backendId, toDto(p, existing._backendId))
-      setProjectsState((prev) => prev.map(x => x.id === id ? fromDto(updated) : x))
-    } else {
-      setProjectsState((prev) => prev.map(x => x.id === id ? { ...x, ...p } : x))
+    const updated = projects.map(x => {
+      if (x.id === id) return { ...x, ...p }
+      if (p.featured) return { ...x, featured: false }
+      return x
+    })
+    setProjectsLS(updated)
+
+    // Sync to backend
+    if (existing?._backendId) {
+      adminContent.updatePortfolio(existing._backendId, toDto(p, 0)).catch(() => {})
     }
-  }, [backendAvailable, projects])
+  }, [projects, setProjectsLS])
 
   const deleteProject = useCallback(async (id: string) => {
     const existing = projects.find(x => x.id === id)
-    if (backendAvailable && existing?._backendId) {
-      await adminContent.deletePortfolio(existing._backendId)
+    setProjectsLS(projects.filter(x => x.id !== id))
+    if (existing?._backendId) {
+      adminContent.deletePortfolio(existing._backendId).catch(() => {})
     }
-    setProjectsState((prev) => prev.filter(x => x.id !== id))
-  }, [backendAvailable, projects])
+  }, [projects, setProjectsLS])
 
   const toggleFeatured = useCallback(async (id: string) => {
     const existing = projects.find(x => x.id === id)
-    if (backendAvailable && existing?._backendId) {
-      const updated = await adminContent.toggleFeatured(existing._backendId)
-      setProjectsState((prev) =>
-        prev.map(p => p.id === id ? fromDto(updated) : { ...p, featured: false })
-      )
-    } else {
-      setProjectsState((prev) =>
-        prev.map(p => ({ ...p, featured: p.id === id ? !p.featured : false }))
-      )
+    setProjectsLS(projects.map(p => ({ ...p, featured: p.id === id ? !p.featured : false })))
+    if (existing?._backendId) {
+      adminContent.toggleFeatured(existing._backendId).catch(() => {})
     }
-  }, [backendAvailable, projects])
+  }, [projects, setProjectsLS])
 
   const value = useMemo(
     () => ({ projects, loading, setProjects, addProject, updateProject, deleteProject, toggleFeatured }),
     [projects, loading, setProjects, addProject, updateProject, deleteProject, toggleFeatured]
   )
 
-  return (
-    <PortfolioContext.Provider value={value}>
-      {children}
-    </PortfolioContext.Provider>
-  )
+  return <PortfolioContext.Provider value={value}>{children}</PortfolioContext.Provider>
 }
 
 export function usePortfolio(): PortfolioContextValue {
