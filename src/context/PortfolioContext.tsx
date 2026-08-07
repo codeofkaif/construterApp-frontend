@@ -1,12 +1,10 @@
 import {
-  createContext,
-  useContext,
-  useMemo,
-  useEffect,
-  useCallback,
-  type ReactNode,
+  createContext, useContext, useMemo, useEffect, useCallback, useState, type ReactNode,
 } from 'react'
-import { useLocalStorage } from '../hooks/useLocalStorage'
+import {
+  Building2, Home, Key, PaintRoller, Ruler, Sofa,
+  Hammer, Wrench, HardHat, Layers, TreePine, Paintbrush, type LucideIcon,
+} from 'lucide-react'
 import { adminContent, publicContent, type PortfolioItemDto } from '../services/contentService'
 
 export type ProjectStat = { value: string; label: string }
@@ -39,35 +37,29 @@ function fromDto(dto: PortfolioItemDto): PortfolioProject {
 
 function toDto(p: Omit<PortfolioProject, 'id' | 'createdAt'>, sortOrder = 0): Omit<PortfolioItemDto, 'id' | 'createdAt'> {
   return {
-    title: p.title,
-    slug: p.slug,
-    location: p.location,
-    featured: p.featured,
-    statsJson: JSON.stringify(p.stats),
-    imagesJson: JSON.stringify(p.images),
-    sortOrder,
+    title: p.title, slug: p.slug, location: p.location, featured: p.featured,
+    statsJson: JSON.stringify(p.stats), imagesJson: JSON.stringify(p.images), sortOrder,
   }
 }
 
-const DEFAULT_PROJECTS: PortfolioProject[] = [
-  {
-    id: 'default-1',
-    slug: 'modern-luxury-villa',
-    title: 'Modern Luxury Villa',
-    location: 'Lucknow, Uttar Pradesh',
-    featured: true,
-    createdAt: Date.now(),
-    stats: [
-      { value: '2500 Sqft', label: 'Built-up Area' },
-      { value: '5 BHK', label: 'Bedrooms' },
-      { value: '10 Months', label: 'Duration' },
-      { value: '₹38 Lakh', label: 'Budget' },
-    ],
-    images: [
-      { url: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1400&q=80', alt: 'Modern luxury villa exterior' },
-    ],
-  },
-]
+const DEFAULT_PROJECTS: PortfolioProject[] = [{
+  id: 'default-1', slug: 'modern-luxury-villa', title: 'Modern Luxury Villa',
+  location: 'Lucknow, Uttar Pradesh', featured: true, createdAt: Date.now(),
+  stats: [
+    { value: '2500 Sqft', label: 'Built-up Area' }, { value: '5 BHK', label: 'Bedrooms' },
+    { value: '10 Months', label: 'Duration' }, { value: '₹38 Lakh', label: 'Budget' },
+  ],
+  images: [{ url: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1400&q=80', alt: 'Modern luxury villa exterior' }],
+}]
+
+const LS_KEY = 'portfolio-projects'
+
+function readCache(): PortfolioProject[] {
+  try { const s = localStorage.getItem(LS_KEY); return s ? JSON.parse(s) : DEFAULT_PROJECTS } catch { return DEFAULT_PROJECTS }
+}
+function writeCache(d: PortfolioProject[]) {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(d)) } catch {}
+}
 
 type PortfolioContextValue = {
   projects: PortfolioProject[]
@@ -82,72 +74,62 @@ type PortfolioContextValue = {
 const PortfolioContext = createContext<PortfolioContextValue | null>(null)
 
 export function PortfolioProvider({ children }: { children: ReactNode }) {
-  const [projects, setProjectsLS] = useLocalStorage<PortfolioProject[]>('portfolio-projects', DEFAULT_PROJECTS)
-  const [loading, setLoading] = useLocalStorage<boolean>('portfolio-loading', true)
+  const [projects, setProjects_] = useState<PortfolioProject[]>(readCache)
+  const [loading, setLoading] = useState(true)
 
-  // On mount: load from backend (backend is source of truth if available)
+  const set = useCallback((p: PortfolioProject[]) => {
+    setProjects_(p); writeCache(p)
+  }, [])
+
+  // On mount: backend is source of truth — overrides localStorage cache
   useEffect(() => {
     publicContent.getPortfolio()
-      .then((dtos) => {
-        if (dtos && dtos.length > 0) {
-          setProjectsLS(dtos.map(fromDto))
-        }
-      })
+      .then((dtos) => { if (dtos && dtos.length > 0) set(dtos.map(fromDto)) })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const setProjects = useCallback((p: PortfolioProject[]) => setProjectsLS(p), [setProjectsLS])
+  const setProjects = useCallback((p: PortfolioProject[]) => set(p), [set])
 
   const addProject = useCallback(async (p: Omit<PortfolioProject, 'id' | 'createdAt'>) => {
-    // Optimistically add to localStorage immediately
+    // Optimistic update with temp id
     const tempId = crypto.randomUUID()
     const newProj: PortfolioProject = { ...p, id: tempId, createdAt: Date.now() }
-    const updated = p.featured
+    const optimistic = p.featured
       ? [...projects.map(x => ({ ...x, featured: false })), newProj]
       : [...projects, newProj]
-    setProjectsLS(updated)
+    set(optimistic)
 
-    // Sync to backend
     try {
       const created = await adminContent.createPortfolio(toDto(p, 0))
-      // Replace temp entry with backend entry
-      setProjectsLS((prev: PortfolioProject[]) =>
-        prev.map(x => x.id === tempId ? fromDto(created) : x)
-      )
-    } catch {}
-  }, [projects, setProjectsLS])
+      const final = fromDto(created)
+      set(optimistic.map(x => x.id === tempId ? final : x))
+    } catch { /* keep optimistic */ }
+  }, [projects, set])
 
   const updateProject = useCallback(async (id: string, p: Omit<PortfolioProject, 'id' | 'createdAt'>) => {
     const existing = projects.find(x => x.id === id)
     const updated = projects.map(x => {
       if (x.id === id) return { ...x, ...p }
-      if (p.featured) return { ...x, featured: false }
-      return x
+      return p.featured ? { ...x, featured: false } : x
     })
-    setProjectsLS(updated)
-
-    // Sync to backend
+    set(updated)
     if (existing?._backendId) {
       adminContent.updatePortfolio(existing._backendId, toDto(p, 0)).catch(() => {})
     }
-  }, [projects, setProjectsLS])
+  }, [projects, set])
 
   const deleteProject = useCallback(async (id: string) => {
     const existing = projects.find(x => x.id === id)
-    setProjectsLS(projects.filter(x => x.id !== id))
-    if (existing?._backendId) {
-      adminContent.deletePortfolio(existing._backendId).catch(() => {})
-    }
-  }, [projects, setProjectsLS])
+    set(projects.filter(x => x.id !== id))
+    if (existing?._backendId) adminContent.deletePortfolio(existing._backendId).catch(() => {})
+  }, [projects, set])
 
   const toggleFeatured = useCallback(async (id: string) => {
     const existing = projects.find(x => x.id === id)
-    setProjectsLS(projects.map(p => ({ ...p, featured: p.id === id ? !p.featured : false })))
-    if (existing?._backendId) {
-      adminContent.toggleFeatured(existing._backendId).catch(() => {})
-    }
-  }, [projects, setProjectsLS])
+    set(projects.map(p => ({ ...p, featured: p.id === id ? !p.featured : false })))
+    if (existing?._backendId) adminContent.toggleFeatured(existing._backendId).catch(() => {})
+  }, [projects, set])
 
   const value = useMemo(
     () => ({ projects, loading, setProjects, addProject, updateProject, deleteProject, toggleFeatured }),
@@ -161,4 +143,8 @@ export function usePortfolio(): PortfolioContextValue {
   const ctx = useContext(PortfolioContext)
   if (!ctx) throw new Error('usePortfolio must be used within PortfolioProvider')
   return ctx
+}
+
+export const SERVICE_ICON_MAP_UNUSED: Record<string, LucideIcon> = {
+  Building2, Home, Key, PaintRoller, Ruler, Sofa, Hammer, Wrench, HardHat, Layers, TreePine, Paintbrush,
 }

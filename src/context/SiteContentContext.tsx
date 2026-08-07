@@ -4,31 +4,18 @@ import {
   useMemo,
   useEffect,
   useCallback,
+  useState,
   type ReactNode,
 } from 'react'
-import { useLocalStorage } from '../hooks/useLocalStorage'
-import { adminContent, publicContent } from '../services/contentService'
-
-export type AboutContent = {
-  tagline: string
-  heading: string
-  paragraphs: string[]
-}
-
-export type ContactContent = {
-  address: string
-  phone: string
-  email: string
-  lat: number
-  lng: number
-}
-
-export type QuickLink = { label: string; href: string }
-export type SocialLink = { iconName: string; href: string }
-
 import {
   Globe, Share2, MessageCircle, Send, Mail, Phone, type LucideIcon,
 } from 'lucide-react'
+import { adminContent, publicContent } from '../services/contentService'
+
+export type AboutContent = { tagline: string; heading: string; paragraphs: string[] }
+export type ContactContent = { address: string; phone: string; email: string; lat: number; lng: number }
+export type QuickLink = { label: string; href: string }
+export type SocialLink = { iconName: string; href: string }
 
 export const SOCIAL_ICON_MAP: Record<string, LucideIcon> = {
   Globe, Share2, MessageCircle, Send, Mail, Phone,
@@ -77,6 +64,19 @@ const DEFAULTS: FullSiteContent = {
   },
 }
 
+const LS_KEY = 'site-content'
+
+function readCache(): FullSiteContent {
+  try {
+    const s = localStorage.getItem(LS_KEY)
+    return s ? JSON.parse(s) : DEFAULTS
+  } catch { return DEFAULTS }
+}
+
+function writeCache(data: FullSiteContent) {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(data)) } catch {}
+}
+
 type SiteContentContextValue = {
   aboutContent: AboutContent
   setAboutContent: (c: AboutContent) => void
@@ -89,52 +89,38 @@ type SiteContentContextValue = {
 const SiteContentContext = createContext<SiteContentContextValue | null>(null)
 
 export function SiteContentProvider({ children }: { children: ReactNode }) {
-  // localStorage as primary — always persists across refresh
-  const [stored, setStored] = useLocalStorage<FullSiteContent>('site-content', DEFAULTS)
+  const [data, setData] = useState<FullSiteContent>(readCache)
 
-  const aboutContent = stored.about
-  const contactContent = stored.contact
-  const footerContent = stored.footer
-
-  // On mount: try to load a newer version from backend
+  // On mount: fetch from backend — backend overrides localStorage cache
   useEffect(() => {
-    publicContent.getConfig('site-content')
-      .then((raw) => {
-        if (!raw) return
-        const data: FullSiteContent = JSON.parse(raw)
-        if (data?.about && data?.contact && data?.footer) {
-          setStored(data)
+    publicContent.getConfig<FullSiteContent>(LS_KEY)
+      .then((remote) => {
+        if (remote?.about && remote?.contact && remote?.footer) {
+          setData(remote)
+          writeCache(remote)
         }
       })
       .catch(() => {})
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  const saveToBackend = useCallback((data: FullSiteContent) => {
-    adminContent.saveConfig('site-content', JSON.stringify(data)).catch(() => {})
   }, [])
 
-  const setAboutContent = useCallback((c: AboutContent) => {
-    const next = { ...stored, about: c }
-    setStored(next)
-    saveToBackend(next)
-  }, [stored, setStored, saveToBackend])
+  const save = useCallback((next: FullSiteContent) => {
+    setData(next)
+    writeCache(next)                                        // localStorage: instant, single-device cache
+    adminContent.saveConfig(LS_KEY, next).catch(() => {})  // backend: cross-device source of truth
+  }, [])
 
-  const setContactContent = useCallback((c: ContactContent) => {
-    const next = { ...stored, contact: c }
-    setStored(next)
-    saveToBackend(next)
-  }, [stored, setStored, saveToBackend])
+  const setAboutContent   = useCallback((c: AboutContent)   => save({ ...data, about: c }),   [data, save])
+  const setContactContent = useCallback((c: ContactContent) => save({ ...data, contact: c }), [data, save])
+  const setFooterContent  = useCallback((c: FooterContent)  => save({ ...data, footer: c }),  [data, save])
 
-  const setFooterContent = useCallback((c: FooterContent) => {
-    const next = { ...stored, footer: c }
-    setStored(next)
-    saveToBackend(next)
-  }, [stored, setStored, saveToBackend])
-
-  const value = useMemo(
-    () => ({ aboutContent, setAboutContent, contactContent, setContactContent, footerContent, setFooterContent }),
-    [aboutContent, setAboutContent, contactContent, setContactContent, footerContent, setFooterContent]
-  )
+  const value = useMemo(() => ({
+    aboutContent: data.about,
+    setAboutContent,
+    contactContent: data.contact,
+    setContactContent,
+    footerContent: data.footer,
+    setFooterContent,
+  }), [data, setAboutContent, setContactContent, setFooterContent])
 
   return <SiteContentContext.Provider value={value}>{children}</SiteContentContext.Provider>
 }

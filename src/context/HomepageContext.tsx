@@ -4,12 +4,10 @@ import {
   useMemo,
   useEffect,
   useCallback,
+  useState,
   type ReactNode,
 } from 'react'
-import {
-  Building2, Users, Smile, Award, type LucideIcon,
-} from 'lucide-react'
-import { useLocalStorage } from '../hooks/useLocalStorage'
+import { Building2, Users, Smile, Award, type LucideIcon } from 'lucide-react'
 import { adminContent, publicContent } from '../services/contentService'
 
 export type TrustStat = { iconName: string; number: string; label: string }
@@ -23,7 +21,7 @@ export type HomepageContent = {
 
 export const LUCIDE_ICON_MAP: Record<string, LucideIcon> = { Building2, Users, Smile, Award }
 
-const DEFAULT_CONTENT: HomepageContent = {
+const DEFAULTS: HomepageContent = {
   heroBgUrl: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=2400&q=80',
   heroLine1: 'Building Dreams,',
   heroLine2: 'Creating Homes',
@@ -36,27 +34,35 @@ const DEFAULT_CONTENT: HomepageContent = {
   ],
 }
 
+const LS_KEY = 'homepage-content'
+
+function readCache(): HomepageContent {
+  try { const s = localStorage.getItem(LS_KEY); return s ? JSON.parse(s) : DEFAULTS } catch { return DEFAULTS }
+}
+
+function writeCache(d: HomepageContent) {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(d)) } catch {}
+}
+
 type HomepageContextValue = { content: HomepageContent; setContent: (c: HomepageContent) => void }
 const HomepageContext = createContext<HomepageContextValue | null>(null)
 
 export function HomepageProvider({ children }: { children: ReactNode }) {
-  const [content, setContentLS] = useLocalStorage<HomepageContent>('homepage-content', DEFAULT_CONTENT)
+  const [content, setContent_] = useState<HomepageContent>(readCache)
 
-  // Sync from backend on mount (backend wins if newer data exists)
   useEffect(() => {
-    publicContent.getConfig('homepage')
-      .then((raw) => {
-        if (!raw) return
-        const data: HomepageContent = JSON.parse(raw)
-        if (data?.heroLine1) setContentLS(data)
+    publicContent.getConfig<HomepageContent>('homepage')
+      .then((remote) => {
+        if (remote?.heroLine1) { setContent_(remote); writeCache(remote) }
       })
       .catch(() => {})
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [])
 
   const setContent = useCallback((c: HomepageContent) => {
-    setContentLS(c)
-    adminContent.saveConfig('homepage', JSON.stringify(c)).catch(() => {})
-  }, [setContentLS])
+    setContent_(c)
+    writeCache(c)
+    adminContent.saveConfig('homepage', c).catch(() => {})
+  }, [])
 
   const value = useMemo(() => ({ content, setContent }), [content, setContent])
   return <HomepageContext.Provider value={value}>{children}</HomepageContext.Provider>

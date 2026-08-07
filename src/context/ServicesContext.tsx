@@ -1,17 +1,10 @@
 import {
-  createContext,
-  useContext,
-  useMemo,
-  useEffect,
-  useCallback,
-  type ReactNode,
+  createContext, useContext, useMemo, useEffect, useCallback, useState, type ReactNode,
 } from 'react'
 import {
   Building2, Home, Key, PaintRoller, Ruler, Sofa,
-  Hammer, Wrench, HardHat, Layers, TreePine, Paintbrush,
-  type LucideIcon,
+  Hammer, Wrench, HardHat, Layers, TreePine, Paintbrush, type LucideIcon,
 } from 'lucide-react'
-import { useLocalStorage } from '../hooks/useLocalStorage'
 import { adminContent, publicContent, type SiteServiceDto } from '../services/contentService'
 
 export type Service = {
@@ -37,12 +30,19 @@ const DEFAULT_SERVICES: Service[] = [
   { id: '6', iconName: 'Building2',   slug: 'commercial-buildings',   title: 'Commercial Buildings',   description: 'High-quality construction for commercial spaces and buildings.' },
 ]
 
+const LS_KEY = 'site-services'
+
 function fromDto(dto: SiteServiceDto): Service {
   return { id: String(dto.id), _backendId: dto.id, iconName: dto.iconName, title: dto.title, description: dto.description, slug: dto.slug }
 }
-
 function toDto(s: Omit<Service, 'id' | '_backendId'>, sortOrder = 0): Omit<SiteServiceDto, 'id'> {
   return { iconName: s.iconName, title: s.title, description: s.description, slug: s.slug, sortOrder }
+}
+function readCache(): Service[] {
+  try { const v = localStorage.getItem(LS_KEY); return v ? JSON.parse(v) : DEFAULT_SERVICES } catch { return DEFAULT_SERVICES }
+}
+function writeCache(d: Service[]) {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(d)) } catch {}
 }
 
 type ServicesContextValue = {
@@ -58,50 +58,46 @@ type ServicesContextValue = {
 const ServicesContext = createContext<ServicesContextValue | null>(null)
 
 export function ServicesProvider({ children }: { children: ReactNode }) {
-  const [services, setServicesLS] = useLocalStorage<Service[]>('site-services', DEFAULT_SERVICES)
-  const [loading, setLoading] = useLocalStorage<boolean>('services-loading', true)
+  const [services, setServices_] = useState<Service[]>(readCache)
+  const [loading, setLoading] = useState(true)
+
+  const set = useCallback((s: Service[]) => { setServices_(s); writeCache(s) }, [])
 
   useEffect(() => {
     publicContent.getServices()
-      .then((dtos) => {
-        if (dtos && dtos.length > 0) setServicesLS(dtos.map(fromDto))
-      })
+      .then((dtos) => { if (dtos && dtos.length > 0) set(dtos.map(fromDto)) })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const setServices = useCallback((s: Service[]) => setServicesLS(s), [setServicesLS])
+  const setServices = useCallback((s: Service[]) => set(s), [set])
 
   const addService = useCallback(async (s: Omit<Service, 'id' | '_backendId'>) => {
     const tempId = crypto.randomUUID()
-    setServicesLS([...services, { ...s, id: tempId }])
+    set([...services, { ...s, id: tempId }])
     try {
       const created = await adminContent.createService(toDto(s, services.length))
-      setServicesLS((prev: Service[]) => prev.map(x => x.id === tempId ? fromDto(created) : x))
-    } catch {}
-  }, [services, setServicesLS])
+      set([...services.filter(x => x.id !== tempId), fromDto(created)])
+    } catch { /* keep optimistic */ }
+  }, [services, set])
 
   const updateService = useCallback(async (id: string, s: Omit<Service, 'id' | '_backendId'>) => {
     const existing = services.find(x => x.id === id)
-    setServicesLS(services.map(x => x.id === id ? { ...x, ...s } : x))
-    if (existing?._backendId) {
-      adminContent.updateService(existing._backendId, toDto(s, 0)).catch(() => {})
-    }
-  }, [services, setServicesLS])
+    set(services.map(x => x.id === id ? { ...x, ...s } : x))
+    if (existing?._backendId) adminContent.updateService(existing._backendId, toDto(s, 0)).catch(() => {})
+  }, [services, set])
 
   const deleteService = useCallback(async (id: string) => {
     const existing = services.find(x => x.id === id)
-    setServicesLS(services.filter(x => x.id !== id))
-    if (existing?._backendId) {
-      adminContent.deleteService(existing._backendId).catch(() => {})
-    }
-  }, [services, setServicesLS])
+    set(services.filter(x => x.id !== id))
+    if (existing?._backendId) adminContent.deleteService(existing._backendId).catch(() => {})
+  }, [services, set])
 
   const reorderServices = useCallback(async (reordered: Service[]) => {
-    setServicesLS(reordered)
+    set(reordered)
     const order = reordered.filter(s => s._backendId).map((s, i) => ({ id: s._backendId!, sortOrder: i }))
     if (order.length > 0) adminContent.reorderServices(order).catch(() => {})
-  }, [setServicesLS])
+  }, [set])
 
   const value = useMemo(
     () => ({ services, loading, setServices, addService, updateService, deleteService, reorderServices }),
