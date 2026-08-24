@@ -53,7 +53,7 @@ export function HomepageProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     publicContent.getConfig<HomepageContent>('homepage')
       .then((remote) => {
-        if (remote?.heroLine1) { setContent_(remote); writeCache(remote) }
+        if (remote && typeof remote === 'object') { setContent_(remote); writeCache(remote) }
       })
       .catch(() => {})
   }, [])

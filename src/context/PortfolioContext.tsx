@@ -84,7 +84,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
   // On mount: backend is source of truth — overrides localStorage cache
   useEffect(() => {
     publicContent.getPortfolio()
-      .then((dtos) => { if (dtos && dtos.length > 0) set(dtos.map(fromDto)) })
+      .then((dtos) => { if (Array.isArray(dtos)) set(dtos.map(fromDto)) })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, []) // eslint-disable-line react-hooks/exhaustive-deps

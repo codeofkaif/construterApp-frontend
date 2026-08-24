@@ -95,7 +95,7 @@ export function SiteContentProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     publicContent.getConfig<FullSiteContent>(LS_KEY)
       .then((remote) => {
-        if (remote?.about && remote?.contact && remote?.footer) {
+        if (remote && typeof remote === 'object') {
           setData(remote)
           writeCache(remote)
         }
