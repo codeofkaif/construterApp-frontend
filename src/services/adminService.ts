@@ -1,7 +1,7 @@
-import { apiGet, apiPatch, apiPost } from './api'
+import { apiFetch, apiGet, apiPatch, apiPost } from './api'
 
 // ---------------------------------------------------------------------------
-// Types — matching backend DTOs exactly
+// Types — matching backend DTOs + extended project features
 // ---------------------------------------------------------------------------
 
 // GET /api/admin/overview → AdminOverviewResponse
@@ -12,16 +12,42 @@ export type AdminOverviewResponse = {
   pendingPayments: number
 }
 
+export type TimelinePhaseStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED'
+
+export type TimelinePhaseItem = {
+  name: string
+  status: TimelinePhaseStatus
+}
+
+export type PaymentInstallment = {
+  id: string
+  amount: number | ''
+  dueDate: string
+  isPaid?: boolean
+}
+
 // GET /api/admin/projects → List<AdminProjectListItem>
 export type AdminProjectListItem = {
   projectId: number
   clientName: string
+  email?: string
+  phone?: string
   title: string
   location: string
+  builtUpArea?: string
+  bedrooms?: string
+  durationMonths?: number
   overallProgress: number
   currentStage: string
+  stageStartDate?: string      // YYYY-MM-DD
+  stageEstCompletion?: string  // YYYY-MM-DD
+  nextMilestoneName?: string
+  nextMilestoneDate?: string   // YYYY-MM-DD
   totalBudget: number
   paidAmount: number
+  status?: 'On Track' | 'Delayed' | 'Completed'
+  timeline?: TimelinePhaseItem[]
+  payments?: PaymentInstallment[]
 }
 
 // PATCH /api/admin/projects/{id} → AdminProjectUpdateRequest
@@ -32,6 +58,14 @@ export type TimelinePhaseUpdateRequest = {
 }
 
 export type AdminProjectUpdateRequest = {
+  clientName?: string
+  email?: string
+  phone?: string
+  title?: string
+  location?: string
+  builtUpArea?: string
+  bedrooms?: string
+  durationMonths?: number
   overallProgress?: number
   currentStage?: string
   stageStartDate?: string    // YYYY-MM-DD
@@ -39,6 +73,10 @@ export type AdminProjectUpdateRequest = {
   nextMilestoneName?: string
   nextMilestoneDate?: string
   totalBudget?: number
+  paidAmount?: number
+  status?: 'On Track' | 'Delayed' | 'Completed'
+  timeline?: TimelinePhaseItem[]
+  payments?: PaymentInstallment[]
   phases?: TimelinePhaseUpdateRequest[]
 }
 
@@ -88,6 +126,13 @@ export type AdminCreateProjectRequest = {
   currentStage?: string
   overallProgress?: number
   paidAmount?: number
+  stageStartDate?: string
+  stageEstCompletion?: string
+  nextMilestoneName?: string
+  nextMilestoneDate?: string
+  status?: 'On Track' | 'Delayed' | 'Completed'
+  timeline?: TimelinePhaseItem[]
+  payments?: PaymentInstallment[]
 }
 
 // ---------------------------------------------------------------------------
@@ -107,6 +152,9 @@ export const adminService = {
   updateProject: (id: number, req: AdminProjectUpdateRequest) =>
     apiPatch<void>(`/api/admin/projects/${id}`, req),
 
+  deleteProject: (id: number) =>
+    apiFetch<void>(`/api/admin/projects/${id}`, { method: 'DELETE' }),
+
   postUpdate: (req: AdminPostUpdateRequest) =>
     apiPost<void>('/api/admin/updates', req),
 
@@ -119,4 +167,5 @@ export const adminService = {
   updateLeadStatus: (id: number, status: 'NEW' | 'CONTACTED' | 'CLOSED') =>
     apiPatch<void>(`/api/admin/leads/${id}/status?status=${status}`),
 }
+
 
