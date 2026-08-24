@@ -69,6 +69,7 @@ type PortfolioContextValue = {
   updateProject: (id: string, p: Omit<PortfolioProject, 'id' | 'createdAt'>) => Promise<void>
   deleteProject: (id: string) => Promise<void>
   toggleFeatured: (id: string) => Promise<void>
+  refetch: () => Promise<void>
 }
 
 const PortfolioContext = createContext<PortfolioContextValue | null>(null)
@@ -81,18 +82,27 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     setProjects_(p); writeCache(p)
   }, [])
 
+  const refetch = useCallback(async () => {
+    try {
+      const dtos = await publicContent.getPortfolio()
+      if (Array.isArray(dtos) && dtos.length > 0) {
+        set(dtos.map(fromDto))
+      }
+    } catch {
+      // keep cache
+    } finally {
+      setLoading(false)
+    }
+  }, [set])
+
   // On mount: backend is source of truth — overrides localStorage cache
   useEffect(() => {
-    publicContent.getPortfolio()
-      .then((dtos) => { if (Array.isArray(dtos)) set(dtos.map(fromDto)) })
-      .catch(() => {})
-      .finally(() => setLoading(false))
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    refetch()
+  }, [refetch])
 
   const setProjects = useCallback((p: PortfolioProject[]) => set(p), [set])
 
   const addProject = useCallback(async (p: Omit<PortfolioProject, 'id' | 'createdAt'>) => {
-    // Optimistic update with temp id
     const tempId = crypto.randomUUID()
     const newProj: PortfolioProject = { ...p, id: tempId, createdAt: Date.now() }
     const optimistic = p.featured
@@ -102,9 +112,13 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
 
     try {
       const created = await adminContent.createPortfolio(toDto(p, 0))
-      const final = fromDto(created)
-      set(optimistic.map(x => x.id === tempId ? final : x))
-    } catch { /* keep optimistic */ }
+      if (created && created.id) {
+        const final = fromDto(created)
+        set(optimistic.map(x => x.id === tempId ? final : x))
+      }
+    } catch {
+      // Keep optimistic
+    }
   }, [projects, set])
 
   const updateProject = useCallback(async (id: string, p: Omit<PortfolioProject, 'id' | 'createdAt'>) => {
@@ -114,26 +128,50 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       return p.featured ? { ...x, featured: false } : x
     })
     set(updated)
-    if (existing?._backendId) {
-      adminContent.updatePortfolio(existing._backendId, toDto(p, 0)).catch(() => {})
+
+    try {
+      if (existing?._backendId) {
+        const res = await adminContent.updatePortfolio(existing._backendId, toDto(p, 0))
+        if (res && res.id) {
+          const final = fromDto(res)
+          set(updated.map(x => x.id === id ? final : x))
+        }
+      } else {
+        // If not yet saved on backend, create it
+        const created = await adminContent.createPortfolio(toDto(p, 0))
+        if (created && created.id) {
+          const final = fromDto(created)
+          set(updated.map(x => x.id === id ? final : x))
+        }
+      }
+    } catch {
+      // Keep optimistic local update
     }
   }, [projects, set])
 
   const deleteProject = useCallback(async (id: string) => {
     const existing = projects.find(x => x.id === id)
     set(projects.filter(x => x.id !== id))
-    if (existing?._backendId) adminContent.deletePortfolio(existing._backendId).catch(() => {})
+    if (existing?._backendId) {
+      try {
+        await adminContent.deletePortfolio(existing._backendId)
+      } catch {}
+    }
   }, [projects, set])
 
   const toggleFeatured = useCallback(async (id: string) => {
     const existing = projects.find(x => x.id === id)
     set(projects.map(p => ({ ...p, featured: p.id === id ? !p.featured : false })))
-    if (existing?._backendId) adminContent.toggleFeatured(existing._backendId).catch(() => {})
+    if (existing?._backendId) {
+      try {
+        await adminContent.toggleFeatured(existing._backendId)
+      } catch {}
+    }
   }, [projects, set])
 
   const value = useMemo(
-    () => ({ projects, loading, setProjects, addProject, updateProject, deleteProject, toggleFeatured }),
-    [projects, loading, setProjects, addProject, updateProject, deleteProject, toggleFeatured]
+    () => ({ projects, loading, setProjects, addProject, updateProject, deleteProject, toggleFeatured, refetch }),
+    [projects, loading, setProjects, addProject, updateProject, deleteProject, toggleFeatured, refetch]
   )
 
   return <PortfolioContext.Provider value={value}>{children}</PortfolioContext.Provider>
@@ -148,3 +186,4 @@ export function usePortfolio(): PortfolioContextValue {
 export const SERVICE_ICON_MAP_UNUSED: Record<string, LucideIcon> = {
   Building2, Home, Key, PaintRoller, Ruler, Sofa, Hammer, Wrench, HardHat, Layers, TreePine, Paintbrush,
 }
+

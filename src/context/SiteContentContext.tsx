@@ -79,11 +79,12 @@ function writeCache(data: FullSiteContent) {
 
 type SiteContentContextValue = {
   aboutContent: AboutContent
-  setAboutContent: (c: AboutContent) => void
+  setAboutContent: (c: AboutContent) => Promise<void>
   contactContent: ContactContent
-  setContactContent: (c: ContactContent) => void
+  setContactContent: (c: ContactContent) => Promise<void>
   footerContent: FooterContent
-  setFooterContent: (c: FooterContent) => void
+  setFooterContent: (c: FooterContent) => Promise<void>
+  refetch: () => Promise<void>
 }
 
 const SiteContentContext = createContext<SiteContentContextValue | null>(null)
@@ -91,22 +92,31 @@ const SiteContentContext = createContext<SiteContentContextValue | null>(null)
 export function SiteContentProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<FullSiteContent>(readCache)
 
-  // On mount: fetch from backend — backend overrides localStorage cache
-  useEffect(() => {
-    publicContent.getConfig<FullSiteContent>(LS_KEY)
-      .then((remote) => {
-        if (remote && typeof remote === 'object') {
-          setData(remote)
-          writeCache(remote)
-        }
-      })
-      .catch(() => {})
+  const refetch = useCallback(async () => {
+    try {
+      const remote = await publicContent.getConfig<FullSiteContent>(LS_KEY)
+      if (remote && typeof remote === 'object' && remote.about) {
+        setData(remote)
+        writeCache(remote)
+      }
+    } catch {
+      // keep cache
+    }
   }, [])
 
-  const save = useCallback((next: FullSiteContent) => {
+  // On mount: fetch from backend — backend overrides localStorage cache
+  useEffect(() => {
+    refetch()
+  }, [refetch])
+
+  const save = useCallback(async (next: FullSiteContent) => {
     setData(next)
     writeCache(next)                                        // localStorage: instant, single-device cache
-    adminContent.saveConfig(LS_KEY, next).catch(() => {})  // backend: cross-device source of truth
+    try {
+      await adminContent.saveConfig(LS_KEY, next)          // backend: cross-device source of truth
+    } catch (err) {
+      console.warn('Backend saveConfig failed for site-content:', err)
+    }
   }, [])
 
   const setAboutContent   = useCallback((c: AboutContent)   => save({ ...data, about: c }),   [data, save])
@@ -120,7 +130,8 @@ export function SiteContentProvider({ children }: { children: ReactNode }) {
     setContactContent,
     footerContent: data.footer,
     setFooterContent,
-  }), [data, setAboutContent, setContactContent, setFooterContent])
+    refetch,
+  }), [data, setAboutContent, setContactContent, setFooterContent, refetch])
 
   return <SiteContentContext.Provider value={value}>{children}</SiteContentContext.Provider>
 }
@@ -130,3 +141,4 @@ export function useSiteContent(): SiteContentContextValue {
   if (!ctx) throw new Error('useSiteContent must be used within SiteContentProvider')
   return ctx
 }
+

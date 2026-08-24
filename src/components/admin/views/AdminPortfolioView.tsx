@@ -1,15 +1,19 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import {
+  CheckCircle2,
   Edit2,
   ExternalLink,
+  Image as ImageIcon,
   MapPin,
   Minus,
   Plus,
+  RefreshCw,
   Star,
   Trash2,
+  Upload,
   X,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import {
   usePortfolio,
   type PortfolioProject,
@@ -30,7 +34,7 @@ function slugify(title: string) {
 
 type ModalProps = {
   initial: Partial<PortfolioProject> | null
-  onSave: (p: Omit<PortfolioProject, 'id' | 'createdAt'>) => void
+  onSave: (p: Omit<PortfolioProject, 'id' | 'createdAt'>) => Promise<void>
   onClose: () => void
 }
 
@@ -58,6 +62,10 @@ function ProjectModal({ initial, onSave, onClose }: ModalProps) {
     initial?.images?.length ? initial.images : [{ url: '', alt: '' }]
   )
 
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
   const handleAddPhoto = () => {
     setImages((prev) => [...prev, { url: '', alt: '' }])
   }
@@ -74,9 +82,34 @@ function ProjectModal({ initial, onSave, onClose }: ModalProps) {
     })
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      const result = event.target?.result as string
+      if (result) {
+        setImages((prev) => {
+          // If first image is empty, replace it, else append
+          if (prev.length === 1 && !prev[0].url) {
+            return [{ url: result, alt: title || 'Project photo' }]
+          }
+          return [...prev, { url: result, alt: title || 'Project photo' }]
+        })
+      }
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!title.trim()) return
+    if (!title.trim()) {
+      setError('Project title is required.')
+      return
+    }
+
+    setSaving(true)
+    setError(null)
 
     const stats = [
       { value: builtUp.trim() || 'N/A', label: 'Built-up Area' },
@@ -87,14 +120,21 @@ function ProjectModal({ initial, onSave, onClose }: ModalProps) {
 
     const validImages = images.filter((img) => img.url.trim() !== '')
 
-    onSave({
-      title: title.trim(),
-      slug: initial?.slug ?? slugify(title.trim()),
-      location: location.trim(),
-      featured,
-      stats,
-      images: validImages.length ? validImages : [{ url: '', alt: title }],
-    })
+    try {
+      await onSave({
+        title: title.trim(),
+        slug: initial?.slug ?? slugify(title.trim()),
+        location: location.trim(),
+        featured,
+        stats,
+        images: validImages.length ? validImages : [{ url: '', alt: title }],
+      })
+      onClose()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save project.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -127,10 +167,16 @@ function ProjectModal({ initial, onSave, onClose }: ModalProps) {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {error && (
+            <div className="rounded-button border border-red-400/30 bg-red-400/10 px-4 py-2.5 text-sm text-red-400">
+              {error}
+            </div>
+          )}
+
           {/* Main Info */}
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="admin-label">Project Title</label>
+              <label className="admin-label">Project Title *</label>
               <input
                 type="text"
                 required
@@ -141,7 +187,7 @@ function ProjectModal({ initial, onSave, onClose }: ModalProps) {
               />
             </div>
             <div>
-              <label className="admin-label">Location</label>
+              <label className="admin-label">Location *</label>
               <input
                 type="text"
                 required
@@ -227,33 +273,69 @@ function ProjectModal({ initial, onSave, onClose }: ModalProps) {
           <div>
             <div className="mb-2 flex items-center justify-between">
               <label className="admin-label mb-0">Photo Gallery</label>
-              <button
-                type="button"
-                onClick={handleAddPhoto}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-brand-gold/30 px-3 py-1 text-xs font-medium text-brand-gold hover:border-brand-gold/60"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                Add Photo
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="inline-flex items-center gap-1 rounded-lg border border-brand-gold/30 px-2.5 py-1 text-xs font-medium text-brand-gold hover:border-brand-gold/60"
+                >
+                  <Upload className="h-3 w-3" />
+                  Upload Photo File
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddPhoto}
+                  className="inline-flex items-center gap-1 rounded-lg border border-white/10 px-2.5 py-1 text-xs font-medium text-white/70 hover:border-white/20 hover:text-white"
+                >
+                  <Plus className="h-3 w-3" />
+                  Add URL
+                </button>
+              </div>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-3">
               {images.map((img, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <input
-                    type="url"
-                    value={img.url}
-                    onChange={(e) => handleImageChange(i, e.target.value)}
-                    placeholder="https://images.unsplash.com/..."
-                    className="admin-input flex-1"
-                  />
+                <div key={i} className="flex items-start gap-2.5 rounded-lg border border-white/[0.06] bg-white/[0.02] p-2.5">
+                  {img.url ? (
+                    <img
+                      src={img.url}
+                      alt={`Photo ${i + 1}`}
+                      className="h-12 w-16 rounded-md object-cover border border-white/10 shrink-0 bg-black/20"
+                      onError={(e) => {
+                        ;(e.currentTarget as HTMLImageElement).src = ''
+                      }}
+                    />
+                  ) : (
+                    <div className="flex h-12 w-16 shrink-0 items-center justify-center rounded-md border border-white/10 bg-white/5 text-white/30">
+                      <ImageIcon className="h-4 w-4" />
+                    </div>
+                  )}
+
+                  <div className="flex-1">
+                    <input
+                      type="text"
+                      value={img.url}
+                      onChange={(e) => handleImageChange(i, e.target.value)}
+                      placeholder="Paste Image URL (https://...) or upload file above"
+                      className="admin-input text-xs py-1.5 w-full"
+                    />
+                  </div>
+
                   {images.length > 1 && (
                     <button
                       type="button"
                       onClick={() => handleRemovePhoto(i)}
-                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/10 text-white/40 hover:border-red-500/40 hover:text-red-400"
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 text-white/40 hover:border-red-500/40 hover:text-red-400"
+                      title="Remove Photo"
                     >
-                      <Minus className="h-4 w-4" />
+                      <Minus className="h-3.5 w-3.5" />
                     </button>
                   )}
                 </div>
@@ -272,9 +354,17 @@ function ProjectModal({ initial, onSave, onClose }: ModalProps) {
             </button>
             <button
               type="submit"
-              className="rounded-button bg-brand-gold px-5 py-2 text-sm font-semibold text-brand-dark hover:bg-brand-goldLight"
+              disabled={saving}
+              className="rounded-button bg-brand-gold px-6 py-2 text-sm font-semibold text-brand-dark hover:bg-brand-goldLight disabled:opacity-60 flex items-center gap-2"
             >
-              Save Project
+              {saving ? (
+                <>
+                  <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                  Saving…
+                </>
+              ) : (
+                'Save Project'
+              )}
             </button>
           </div>
         </form>
@@ -347,23 +437,25 @@ export default function AdminPortfolioView() {
   const { projects, addProject, updateProject, deleteProject, toggleFeatured } = usePortfolio()
   const [modalTarget, setModalTarget] = useState<PortfolioProject | 'new' | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<PortfolioProject | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
 
   const handleSave = async (data: Omit<PortfolioProject, 'id' | 'createdAt'>) => {
-    try {
-      if (modalTarget === 'new') {
-        await addProject(data)
-      } else if (modalTarget) {
-        await updateProject((modalTarget as PortfolioProject).id, data)
-      }
-    } finally {
-      setModalTarget(null)
+    if (modalTarget === 'new') {
+      await addProject(data)
+      setToast('Project added and saved to backend!')
+    } else if (modalTarget) {
+      await updateProject((modalTarget as PortfolioProject).id, data)
+      setToast('Project and photos updated successfully!')
     }
+    setTimeout(() => setToast(null), 3000)
   }
 
   const handleDelete = async () => {
     if (!deleteTarget) return
     await deleteProject(deleteTarget.id)
     setDeleteTarget(null)
+    setToast('Project deleted successfully!')
+    setTimeout(() => setToast(null), 3000)
   }
 
   return (
@@ -494,7 +586,19 @@ export default function AdminPortfolioView() {
             onCancel={() => setDeleteTarget(null)}
           />
         )}
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: 40, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 40, scale: 0.96 }}
+            className="fixed bottom-6 left-1/2 z-[200] -translate-x-1/2 rounded-button bg-brand-dark border border-brand-gold/30 px-5 py-3 text-sm font-medium text-white shadow-xl flex items-center gap-2"
+          >
+            <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+            {toast}
+          </motion.div>
+        )}
       </AnimatePresence>
     </motion.div>
   )
 }
+

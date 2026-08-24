@@ -274,19 +274,51 @@ export default function AdminSendUpdateView() {
 
           {/* Photo URL */}
           <div>
-            <Label>
-              <span className="flex items-center gap-1.5">
-                <ImageIcon className="h-3.5 w-3.5" />
-                Photo URL <span className="text-white/30">(optional)</span>
-              </span>
-            </Label>
-            <input
-              type="url"
-              value={form.photoUrl}
-              onChange={(e) => set('photoUrl', e.target.value)}
-              placeholder="https://example.com/site-photo.jpg"
-              className="w-full min-h-[44px] rounded-button border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/20 focus:border-brand-gold/50 focus:outline-none focus:ring-1 focus:ring-brand-gold/20"
-            />
+            <div className="flex items-center justify-between">
+              <Label>
+                <span className="flex items-center gap-1.5">
+                  <ImageIcon className="h-3.5 w-3.5" />
+                  Site Photo <span className="text-white/30">(optional)</span>
+                </span>
+              </Label>
+              <label className="inline-flex items-center gap-1 text-xs text-brand-gold cursor-pointer hover:underline mb-1">
+                Upload Photo File
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (!file) return
+                    const reader = new FileReader()
+                    reader.onload = (evt) => {
+                      const res = evt.target?.result as string
+                      if (res) set('photoUrl', res)
+                    }
+                    reader.readAsDataURL(file)
+                  }}
+                  className="hidden"
+                />
+              </label>
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={form.photoUrl}
+                onChange={(e) => set('photoUrl', e.target.value)}
+                placeholder="Paste Image URL (https://...) or upload file"
+                className="w-full min-h-[44px] rounded-button border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/20 focus:border-brand-gold/50 focus:outline-none focus:ring-1 focus:ring-brand-gold/20"
+              />
+              {form.photoUrl && (
+                <button
+                  type="button"
+                  onClick={() => set('photoUrl', '')}
+                  className="rounded-lg border border-white/10 p-2 text-white/40 hover:text-red-400 shrink-0"
+                  title="Clear Image"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
             <ImagePreview url={form.photoUrl} />
           </div>
 

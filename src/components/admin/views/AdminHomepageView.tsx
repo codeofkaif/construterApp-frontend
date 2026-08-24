@@ -1,12 +1,15 @@
-import { motion } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import {
+  CheckCircle2,
   ExternalLink,
-  Image,
   Minus,
   Plus,
+  RefreshCw,
   Save,
+  Upload,
+  X,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import {
   LUCIDE_ICON_MAP,
   useHomepage,
@@ -76,12 +79,36 @@ function StatRow({
 export default function AdminHomepageView() {
   const { content, setContent } = useHomepage()
   const [form, setForm] = useState<HomepageContent>({ ...content, trustStats: [...content.trustStats] })
-  const [saved, setSaved] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [toast, setToast] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const handleSave = () => {
-    setContent(form)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      const result = event.target?.result as string
+      if (result) {
+        setForm((p) => ({ ...p, heroBgUrl: result }))
+      }
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleSave = async () => {
+    setSaving(true)
+    setError(null)
+    try {
+      await setContent(form)
+      setToast('Homepage content & image saved successfully!')
+      setTimeout(() => setToast(null), 3000)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save homepage content.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   const updateStat = (index: number, updated: TrustStat) => {
@@ -122,7 +149,7 @@ export default function AdminHomepageView() {
         <div>
           <h2 className="text-2xl font-bold text-white">Homepage</h2>
           <p className="mt-1 text-sm text-white/40">
-            Edit hero content — changes reflect on the landing page instantly after saving.
+            Edit hero content & background image — changes reflect on the landing page instantly after saving.
           </p>
         </div>
         <button
@@ -138,18 +165,55 @@ export default function AdminHomepageView() {
       {/* Card */}
       <div className="rounded-card border border-white/[0.08] bg-brand-darkCard p-6 sm:p-8">
         <div className="space-y-6">
+          {error && (
+            <div className="rounded-button border border-red-400/30 bg-red-400/10 px-4 py-2.5 text-sm text-red-400">
+              {error}
+            </div>
+          )}
+
           {/* Hero BG */}
           <div>
-            <label className="admin-label">Hero Background Image URL</label>
-            <input
-              type="url"
-              value={form.heroBgUrl}
-              onChange={(e) => setForm((p) => ({ ...p, heroBgUrl: e.target.value }))}
-              placeholder="https://..."
-              className="admin-input mt-2 w-full"
-            />
+            <div className="flex items-center justify-between">
+              <label className="admin-label mb-0">Hero Background Image</label>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-brand-gold/30 px-3 py-1 text-xs font-medium text-brand-gold hover:border-brand-gold/60 transition-colors"
+              >
+                <Upload className="h-3.5 w-3.5" />
+                Upload Image File
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFileUpload}
+                className="hidden"
+              />
+            </div>
+
+            <div className="mt-2 flex gap-2">
+              <input
+                type="text"
+                value={form.heroBgUrl}
+                onChange={(e) => setForm((p) => ({ ...p, heroBgUrl: e.target.value }))}
+                placeholder="Paste Image URL (https://...) or upload file from device"
+                className="admin-input flex-1"
+              />
+              {form.heroBgUrl && (
+                <button
+                  type="button"
+                  onClick={() => setForm((p) => ({ ...p, heroBgUrl: '' }))}
+                  className="rounded-lg border border-white/10 p-2 text-white/40 hover:text-red-400"
+                  title="Clear Image"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+
             {form.heroBgUrl && (
-              <div className="mt-3 relative h-40 w-full overflow-hidden rounded-xl border border-white/10">
+              <div className="mt-3 relative h-48 w-full overflow-hidden rounded-xl border border-white/10 bg-black/30">
                 <img
                   src={form.heroBgUrl}
                   alt="Hero preview"
@@ -158,8 +222,8 @@ export default function AdminHomepageView() {
                     ;(e.currentTarget as HTMLImageElement).style.display = 'none'
                   }}
                 />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <Image className="h-8 w-8 text-white/10" />
+                <div className="absolute top-2 right-2 rounded bg-black/60 px-2 py-1 text-[11px] font-medium text-white/70 backdrop-blur-sm">
+                  Live Hero Preview
                 </div>
               </div>
             )}
@@ -240,16 +304,42 @@ export default function AdminHomepageView() {
             <motion.button
               type="button"
               onClick={handleSave}
+              disabled={saving}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.97 }}
-              className="inline-flex items-center gap-2 rounded-button bg-brand-gold px-6 py-2.5 text-sm font-semibold text-brand-dark transition-colors hover:bg-brand-goldLight"
+              className="inline-flex items-center gap-2 rounded-button bg-brand-gold px-6 py-2.5 text-sm font-semibold text-brand-dark transition-colors hover:bg-brand-goldLight disabled:opacity-60"
             >
-              <Save className="h-4 w-4" />
-              {saved ? 'Saved!' : 'Save Changes'}
+              {saving ? (
+                <>
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  Saving…
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4" />
+                  Save Changes
+                </>
+              )}
             </motion.button>
           </div>
         </div>
       </div>
+
+      {/* Toast */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: 40, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 40, scale: 0.96 }}
+            className="fixed bottom-6 left-1/2 z-[200] -translate-x-1/2 rounded-button bg-brand-dark border border-brand-gold/30 px-5 py-3 text-sm font-medium text-white shadow-xl flex items-center gap-2"
+          >
+            <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+            {toast}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   )
 }
+

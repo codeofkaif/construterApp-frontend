@@ -44,27 +44,43 @@ function writeCache(d: HomepageContent) {
   try { localStorage.setItem(LS_KEY, JSON.stringify(d)) } catch {}
 }
 
-type HomepageContextValue = { content: HomepageContent; setContent: (c: HomepageContent) => void }
+type HomepageContextValue = {
+  content: HomepageContent
+  setContent: (c: HomepageContent) => Promise<void>
+  refetch: () => Promise<void>
+}
 const HomepageContext = createContext<HomepageContextValue | null>(null)
 
 export function HomepageProvider({ children }: { children: ReactNode }) {
   const [content, setContent_] = useState<HomepageContent>(readCache)
 
-  useEffect(() => {
-    publicContent.getConfig<HomepageContent>('homepage')
-      .then((remote) => {
-        if (remote && typeof remote === 'object') { setContent_(remote); writeCache(remote) }
-      })
-      .catch(() => {})
+  const refetch = useCallback(async () => {
+    try {
+      const remote = await publicContent.getConfig<HomepageContent>('homepage')
+      if (remote && typeof remote === 'object' && remote.heroLine1) {
+        setContent_(remote)
+        writeCache(remote)
+      }
+    } catch {
+      // keep cache
+    }
   }, [])
 
-  const setContent = useCallback((c: HomepageContent) => {
+  useEffect(() => {
+    refetch()
+  }, [refetch])
+
+  const setContent = useCallback(async (c: HomepageContent) => {
     setContent_(c)
     writeCache(c)
-    adminContent.saveConfig('homepage', c).catch(() => {})
+    try {
+      await adminContent.saveConfig('homepage', c)
+    } catch (err) {
+      console.warn('Backend saveConfig failed, cached locally:', err)
+    }
   }, [])
 
-  const value = useMemo(() => ({ content, setContent }), [content, setContent])
+  const value = useMemo(() => ({ content, setContent, refetch }), [content, setContent, refetch])
   return <HomepageContext.Provider value={value}>{children}</HomepageContext.Provider>
 }
 
@@ -73,3 +89,4 @@ export function useHomepage(): HomepageContextValue {
   if (!ctx) throw new Error('useHomepage must be used within HomepageProvider')
   return ctx
 }
+
