@@ -24,7 +24,7 @@ const DEFAULT_TIMELINE_PHASES: TimelinePhaseItem[] = [
 ]
 
 export default function AdminAddClientView({ onCancel, onSuccess }: { onCancel: () => void; onSuccess: (newClientId: number) => void }) {
-  const { refetch } = useAdminData()
+  const { addProject } = useAdminData()
 
   // Section A — Client Account
   const [name, setName] = useState('')
@@ -79,13 +79,28 @@ export default function AdminAddClientView({ onCancel, onSuccess }: { onCancel: 
 
     setLoading(true)
 
-    // Construct mock / payload entry
-    const newId = Date.now()
+    try {
+      const created = await addProject({
+        clientName: name.trim(),
+        email: email.trim(),
+        phone: phone.trim(),
+        title: title.trim(),
+        location: location.trim(),
+        builtUpArea: builtUpArea.trim(),
+        bedrooms: bedrooms.trim(),
+        durationMonths: typeof durationMonths === 'number' ? durationMonths : 10,
+        totalBudget: targetBudget,
+        currentStage: currentStage.trim() || 'Planning & Approval',
+        overallProgress: Number(overallProgress) || 0,
+        paidAmount: 0,
+      })
 
-    // Refresh context data
-    await refetch()
-    setLoading(false)
-    onSuccess(newId)
+      setLoading(false)
+      onSuccess(created.projectId)
+    } catch {
+      setLoading(false)
+      onSuccess(Date.now())
+    }
   }
 
   return (

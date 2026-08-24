@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { ImageIcon, Send } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useAppData } from '../../../context/AppDataContext'
+import { useAdminData } from '../../../hooks/useAdminData'
 import { adminService } from '../../../services/adminService'
 
 function Label({ children }: { children: React.ReactNode }) {
@@ -159,12 +160,13 @@ const BLANK = {
 }
 
 export default function AdminSendUpdateView() {
-  const { clients, postUpdateForClient } = useAppData()
+  const { data } = useAdminData()
+  const { postUpdateForClient } = useAppData()
 
-  const clientOptions = clients.map((c) => ({
-    id: c.id,
+  const clientOptions = data.projects.map((c) => ({
+    id: String(c.projectId),
     clientName: c.clientName,
-    projectTitle: c.project.title,
+    projectTitle: c.title,
   }))
 
   const [form, setForm] = useState(BLANK)

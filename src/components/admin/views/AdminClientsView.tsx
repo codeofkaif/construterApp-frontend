@@ -1,8 +1,8 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { Plus, Search, X } from 'lucide-react'
+import { CheckCircle2, CloudOff, Database, Plus, RefreshCw, Search, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useAdminData } from '../../../hooks/useAdminData'
-import { adminService, type AdminProjectListItem } from '../../../services/adminService'
+import { type AdminProjectListItem } from '../../../services/adminService'
 import { ApiError } from '../../../services/api'
 
 // ---------------------------------------------------------------------------
@@ -10,11 +10,12 @@ import { ApiError } from '../../../services/api'
 // ---------------------------------------------------------------------------
 
 function fmt(n: number) {
+  if (n >= 10000000) return '₹' + (n / 10000000).toFixed(2) + 'Cr'
   return '₹' + (n / 100000).toFixed(1) + 'L'
 }
 
 function deriveStatus(progress: number): 'On Track' | 'Delayed' {
-  return progress >= 100 ? 'On Track' : 'On Track'   // No est-completion from list API; show 'On Track' by default
+  return progress >= 100 ? 'On Track' : 'On Track'
 }
 
 // ---------------------------------------------------------------------------
@@ -33,9 +34,10 @@ function Toast({ message, onDone }: { message: string; onDone: () => void }) {
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: 40, scale: 0.96 }}
       transition={{ duration: 0.25 }}
-      className="fixed bottom-6 left-1/2 z-[200] -translate-x-1/2 rounded-button bg-brand-dark border border-brand-gold/30 px-5 py-3 text-sm font-medium text-white shadow-xl"
+      className="fixed bottom-6 left-1/2 z-[200] -translate-x-1/2 rounded-button bg-brand-dark border border-brand-gold/30 px-5 py-3 text-sm font-medium text-white shadow-xl flex items-center gap-2"
     >
-      ✅ {message}
+      <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+      {message}
     </motion.div>
   )
 }
@@ -76,20 +78,22 @@ function StatusPill({ status }: { status: 'On Track' | 'Delayed' }) {
 type EditForm = {
   overallProgress: number
   totalBudget: number
+  currentStage: string
 }
 
 function EditDrawer({
   client,
   onClose,
-  onSaved,
+  onSave,
 }: {
   client: AdminProjectListItem
   onClose: () => void
-  onSaved: () => void
+  onSave: (form: EditForm) => Promise<void>
 }) {
   const [form, setForm] = useState<EditForm>({
     overallProgress: client.overallProgress,
     totalBudget: client.totalBudget,
+    currentStage: client.currentStage,
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -104,12 +108,7 @@ function EditDrawer({
     setSaving(true)
     setError(null)
     try {
-      await adminService.updateProject(client.projectId, {
-        overallProgress: form.overallProgress,
-        totalBudget: form.totalBudget,
-        currentStage: client.currentStage,
-      })
-      onSaved()
+      await onSave(form)
       onClose()
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to save changes.')
@@ -162,6 +161,18 @@ function EditDrawer({
               {error}
             </div>
           )}
+
+          {/* Current Stage */}
+          <section>
+            <p className="mb-1.5 text-xs font-medium text-white/50">Current Stage</p>
+            <input
+              type="text"
+              value={form.currentStage}
+              onChange={(e) => setForm((f) => ({ ...f, currentStage: e.target.value }))}
+              placeholder="e.g. Brick Work"
+              className="w-full rounded-button border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white focus:border-brand-gold/50 focus:outline-none"
+            />
+          </section>
 
           {/* Progress */}
           <section>
@@ -231,23 +242,37 @@ export default function AdminClientsView({
 }: {
   onNavigateToAddClient?: () => void
 }) {
-  const { data, isLoading, refetch } = useAdminData()
+  const { data, isLoading, isOffline, refetch, updateProject } = useAdminData()
   const clients = data.projects
 
   const [search, setSearch] = useState('')
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [toast, setToast] = useState<string | null>(null)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const searchRef = useRef<HTMLInputElement>(null)
 
   const filtered = clients.filter((c) =>
     c.clientName.toLowerCase().includes(search.toLowerCase()) ||
-    c.title.toLowerCase().includes(search.toLowerCase()),
+    c.title.toLowerCase().includes(search.toLowerCase()) ||
+    c.location.toLowerCase().includes(search.toLowerCase()),
   )
 
   const selectedClient = clients.find((c) => c.projectId === selectedId) ?? null
 
-  const handleSaved = async () => {
+  const handleManualRefresh = async () => {
+    setIsRefreshing(true)
     await refetch()
+    setIsRefreshing(false)
+    setToast('Client data refreshed')
+  }
+
+  const handleSaveDrawer = async (form: EditForm) => {
+    if (!selectedClient) return
+    await updateProject(selectedClient.projectId, {
+      overallProgress: form.overallProgress,
+      totalBudget: form.totalBudget,
+      currentStage: form.currentStage,
+    })
     setToast('Project updated successfully')
   }
 
@@ -256,9 +281,22 @@ export default function AdminClientsView({
       {/* Header row */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-white">Clients</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-2xl font-bold text-white">Clients</h2>
+            {isOffline ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 text-xs font-medium text-amber-400">
+                <CloudOff className="h-3 w-3" />
+                Local Mode
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-400">
+                <Database className="h-3 w-3" />
+                Live Database
+              </span>
+            )}
+          </div>
           <p className="mt-0.5 text-sm text-white/40">
-            {isLoading ? 'Loading…' : `${clients.length} registered · click a row to edit`}
+            {isLoading ? 'Loading…' : `${clients.length} registered · click any row to edit`}
           </p>
         </div>
 
@@ -271,7 +309,7 @@ export default function AdminClientsView({
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by name…"
+              placeholder="Search by name or location…"
               className="h-10 w-56 rounded-button border border-white/10 bg-white/5 pl-9 pr-3 text-sm text-white placeholder:text-white/30 focus:border-brand-gold/50 focus:outline-none focus:ring-1 focus:ring-brand-gold/20 sm:w-64"
             />
             {search && (
@@ -280,6 +318,16 @@ export default function AdminClientsView({
               </button>
             )}
           </div>
+
+          <button
+            type="button"
+            onClick={handleManualRefresh}
+            disabled={isRefreshing}
+            className="flex h-10 w-10 items-center justify-center rounded-button border border-white/10 bg-white/5 text-white/70 hover:border-white/20 hover:text-white transition-colors"
+            title="Refresh Data"
+          >
+            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin text-brand-gold' : ''}`} />
+          </button>
 
           {onNavigateToAddClient && (
             <motion.button
@@ -318,8 +366,25 @@ export default function AdminClientsView({
               <tbody>
                 {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="py-14 text-center text-sm text-gray-400">
-                      {search ? `No clients match "${search}"` : 'No clients found.'}
+                    <td colSpan={8} className="py-14 text-center">
+                      <div className="mx-auto max-w-sm text-center">
+                        <p className="text-sm font-medium text-gray-700">
+                          {search ? `No clients match "${search}"` : 'No clients found.'}
+                        </p>
+                        <p className="mt-1 text-xs text-gray-400">
+                          {search ? 'Try clearing your search term.' : 'Get started by creating your first client account.'}
+                        </p>
+                        {onNavigateToAddClient && !search && (
+                          <button
+                            type="button"
+                            onClick={onNavigateToAddClient}
+                            className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-brand-dark px-4 py-2 text-xs font-semibold text-brand-gold hover:bg-black"
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                            Add Client
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ) : (
@@ -359,7 +424,7 @@ export default function AdminClientsView({
             key={selectedClient.projectId}
             client={selectedClient}
             onClose={() => setSelectedId(null)}
-            onSaved={handleSaved}
+            onSave={handleSaveDrawer}
           />
         )}
       </AnimatePresence>
@@ -371,3 +436,4 @@ export default function AdminClientsView({
     </div>
   )
 }
+

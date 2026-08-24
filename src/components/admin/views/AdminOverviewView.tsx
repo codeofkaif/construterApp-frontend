@@ -149,7 +149,7 @@ function StatsSkeleton() {
 // ---------------------------------------------------------------------------
 
 export default function AdminOverviewView() {
-  const { data, isLoading } = useAdminData()
+  const { data, isLoading, isOffline } = useAdminData()
   const overview = data.overview
 
   return (
@@ -158,7 +158,7 @@ export default function AdminOverviewView() {
       <div>
         <h2 className="text-2xl font-bold text-white">Overview</h2>
         <p className="mt-1 text-sm text-white/40">
-          {isLoading ? 'Loading…' : 'Live data from database'}
+          {isLoading ? 'Loading…' : isOffline ? 'Cached / Local data (Backend offline)' : 'Live data from database'}
         </p>
       </div>
 

@@ -75,6 +75,21 @@ export type PageResponse<T> = {
   size: number
 }
 
+export type AdminCreateProjectRequest = {
+  clientName: string
+  email?: string
+  phone?: string
+  title: string
+  location: string
+  builtUpArea?: string
+  bedrooms?: string
+  durationMonths?: number
+  totalBudget: number
+  currentStage?: string
+  overallProgress?: number
+  paidAmount?: number
+}
+
 // ---------------------------------------------------------------------------
 // API calls
 // ---------------------------------------------------------------------------
@@ -85,6 +100,9 @@ export const adminService = {
 
   getProjects: () =>
     apiGet<AdminProjectListItem[]>('/api/admin/projects'),
+
+  createProject: (req: AdminCreateProjectRequest) =>
+    apiPost<AdminProjectListItem>('/api/admin/projects', req),
 
   updateProject: (id: number, req: AdminProjectUpdateRequest) =>
     apiPatch<void>(`/api/admin/projects/${id}`, req),
@@ -101,3 +119,4 @@ export const adminService = {
   updateLeadStatus: (id: number, status: 'NEW' | 'CONTACTED' | 'CLOSED') =>
     apiPatch<void>(`/api/admin/leads/${id}/status?status=${status}`),
 }
+

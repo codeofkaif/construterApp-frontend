@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { Send } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useAppData } from '../../../context/AppDataContext'
+import { useAdminData } from '../../../hooks/useAdminData'
 import { adminService } from '../../../services/adminService'
 
 function Label({ children }: { children: React.ReactNode }) {
@@ -28,7 +29,14 @@ function Toast({ message, onDone }: { message: string; onDone: () => void }) {
 }
 
 function SendNewTab() {
-  const { clients, sendNotificationForClient } = useAppData()
+  const { data } = useAdminData()
+  const { sendNotificationForClient } = useAppData()
+
+  const clients = data.projects.map((c) => ({
+    id: String(c.projectId),
+    clientName: c.clientName,
+    projectTitle: c.title,
+  }))
 
   const [recipientId, setRecipientId] = useState('')
   const [message, setMessage]         = useState('')
@@ -91,7 +99,7 @@ function SendNewTab() {
             <optgroup label="─────────────">
               {clients.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.clientName} — {c.project.title}
+                  {c.clientName} — {c.projectTitle}
                 </option>
               ))}
             </optgroup>
