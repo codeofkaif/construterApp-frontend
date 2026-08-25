@@ -89,6 +89,16 @@ export async function apiFetch<T>(
     } catch {
       // ignore parse error
     }
+
+    if (res.status === 401) {
+      // Token expired or invalid — clear storage and redirect (unless logging in)
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      if (!path.includes('/api/auth/login')) {
+        window.location.href = '/login'
+      }
+    }
+
     throw new ApiError(res.status, message)
   }
 
