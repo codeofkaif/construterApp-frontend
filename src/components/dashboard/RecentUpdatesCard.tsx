@@ -31,11 +31,13 @@ export default function RecentUpdatesCard({
               </p>
               <p className="mt-1 break-words text-sm text-brand-dark">{update.description}</p>
             </div>
-            <img
-              src={update.thumbnailUrl}
-              alt=""
-              className="h-12 w-12 shrink-0 rounded-lg object-cover"
-            />
+            {update.thumbnailUrl ? (
+              <img
+                src={update.thumbnailUrl}
+                alt=""
+                className="h-12 w-12 shrink-0 rounded-lg object-cover"
+              />
+            ) : null}
           </li>
         ))}
       </ul>

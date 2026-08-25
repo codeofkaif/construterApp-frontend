@@ -68,11 +68,13 @@ export default function ProjectDetailPage() {
                 onClick={() => openLightbox(index)}
                 className="aspect-[4/3] overflow-hidden rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"
               >
-                <img
-                  src={image.url}
-                  alt={image.alt || project.title}
-                  className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
-                />
+                {image.url ? (
+                  <img
+                    src={image.url}
+                    alt={image.alt || project.title}
+                    className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
+                  />
+                ) : null}
               </button>
             ))}
           </div>

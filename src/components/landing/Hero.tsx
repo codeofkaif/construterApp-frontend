@@ -57,11 +57,13 @@ export default function Hero({ onOpenConsultation }: HeroProps) {
       id="home"
       className="relative flex min-h-[100svh] flex-col overflow-hidden"
     >
-      <img
-        src={content.heroBgUrl}
-        alt="Hero background"
-        className="absolute inset-0 h-full w-full object-cover"
-      />
+      {content.heroBgUrl ? (
+        <img
+          src={content.heroBgUrl}
+          alt="Hero background"
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+      ) : null}
 
       <div
         className="absolute inset-0"

@@ -149,11 +149,17 @@ export default function DashboardTopBar({
               onClick={handleUserMenuToggle}
               className="interactive-focus flex items-center gap-3 rounded-full border border-border-light bg-white py-1.5 pl-1.5 pr-3 transition-colors hover:border-brand-gold/40 hover:bg-brand-cream active:scale-95"
             >
-              <img
-                src={user.avatar}
-                alt={user.name}
-                className="h-9 w-9 rounded-full object-cover"
-              />
+              {user.avatar ? (
+                <img
+                  src={user.avatar}
+                  alt={user.name}
+                  className="h-9 w-9 rounded-full object-cover"
+                />
+              ) : (
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-gold/20 text-brand-gold text-sm font-semibold">
+                  {user.name?.[0] ?? 'C'}
+                </span>
+              )}
               <span className="hidden text-sm font-medium text-brand-dark sm:inline">
                 {user.name}
               </span>

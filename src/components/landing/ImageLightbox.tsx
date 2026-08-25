@@ -94,14 +94,16 @@ export default function ImageLightbox({
             exit={{ opacity: 0, scale: 0.98 }}
             transition={{ duration: 0.2 }}
           >
-            <img
-              src={currentImage.url}
-              alt={currentImage.alt}
-              className="max-h-[75vh] w-full rounded-xl object-contain"
-            />
+            {currentImage?.url ? (
+              <img
+                src={currentImage.url}
+                alt={currentImage.alt}
+                className="max-h-[75vh] w-full rounded-xl object-contain"
+              />
+            ) : null}
             <p className="mt-4 flex items-center gap-2 text-sm text-white/70">
               <Camera className="h-4 w-4" />
-              {currentImage.alt} — {currentIndex + 1} / {images.length}
+              {currentImage?.alt} — {currentIndex + 1} / {images.length}
             </p>
           </motion.div>
         </motion.div>

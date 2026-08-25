@@ -309,7 +309,7 @@ function ProjectModal({ initial, onSave, onClose }: ModalProps) {
                       alt={`Photo ${i + 1}`}
                       className="h-12 w-16 rounded-md object-cover border border-white/10 shrink-0 bg-black/20"
                       onError={(e) => {
-                        ;(e.currentTarget as HTMLImageElement).src = ''
+                        ;(e.currentTarget as HTMLImageElement).style.display = 'none'
                       }}
                     />
                   ) : (

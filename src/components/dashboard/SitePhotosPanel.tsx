@@ -38,11 +38,13 @@ export default function SitePhotosPanel({
               onClick={() => openLightbox(index)}
               className="aspect-[4/3] overflow-hidden rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"
             >
-              <img
-                src={photo.url}
-                alt={photo.alt}
-                className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
-              />
+              {photo.url ? (
+                <img
+                  src={photo.url}
+                  alt={photo.alt}
+                  className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
+                />
+              ) : null}
             </button>
           ))}
         </div>

@@ -33,11 +33,17 @@ export default function DashboardSummaryCards({
       <div className="rounded-xl border border-border-light bg-white p-5 shadow-sm">
         <div className="flex items-start justify-between gap-4">
           <p className="text-sm text-gray-500">Project Progress</p>
-          <img
-            src={thumbnail}
-            alt="Project thumbnail"
-            className="h-12 w-12 shrink-0 rounded-lg object-cover"
-          />
+          {thumbnail ? (
+            <img
+              src={thumbnail}
+              alt="Project thumbnail"
+              className="h-12 w-12 shrink-0 rounded-lg object-cover"
+            />
+          ) : (
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-brand-gold/10 text-lg font-bold text-brand-gold">
+              🏗️
+            </div>
+          )}
         </div>
 
         <p className="mt-3 text-4xl font-bold text-brand-dark">

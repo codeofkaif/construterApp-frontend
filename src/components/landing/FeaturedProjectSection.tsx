@@ -80,11 +80,13 @@ export default function FeaturedProjectSection() {
                 onClick={() => openLightbox(0)}
                 className="interactive-focus touch-target aspect-video w-full overflow-hidden rounded-xl sm:aspect-auto sm:h-full sm:w-[55%]"
               >
-                <img
-                  src={heroImage.url}
-                  alt={heroImage.alt || title}
-                  className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
-                />
+                {heroImage.url ? (
+                  <img
+                    src={heroImage.url}
+                    alt={heroImage.alt || title}
+                    className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
+                  />
+                ) : null}
               </button>
 
               {gridImages.length > 0 && (
@@ -100,11 +102,13 @@ export default function FeaturedProjectSection() {
                         onClick={() => openLightbox(imageIndex)}
                         className="interactive-focus touch-target relative min-h-[44px] overflow-hidden rounded-xl"
                       >
-                        <img
-                          src={image.url}
-                          alt={image.alt || title}
-                          className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
-                        />
+                        {image.url ? (
+                          <img
+                            src={image.url}
+                            alt={image.alt || title}
+                            className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
+                          />
+                        ) : null}
                         {isMorePhotos && (
                           <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-brand-dark/55 text-white">
                             <Camera className="h-5 w-5" />

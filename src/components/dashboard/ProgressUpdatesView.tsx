@@ -28,11 +28,13 @@ export default function ProgressUpdatesView({ updates }: ProgressUpdatesViewProp
                 {update.description}
               </p>
             </div>
-            <img
-              src={update.thumbnailUrl}
-              alt=""
-              className="h-14 w-14 shrink-0 rounded-lg object-cover"
-            />
+            {update.thumbnailUrl ? (
+              <img
+                src={update.thumbnailUrl}
+                alt=""
+                className="h-14 w-14 shrink-0 rounded-lg object-cover"
+              />
+            ) : null}
           </li>
         ))}
       </ul>

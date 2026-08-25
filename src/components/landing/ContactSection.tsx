@@ -110,14 +110,16 @@ export default function ContactSection({ onOpenConsultation }: ContactSectionPro
               </div>
 
               <div className="relative h-[260px] w-full bg-brand-dark sm:h-[320px]">
-                <iframe
-                  title="Office Location Map"
-                  src={googleMapsUrl}
-                  className="h-full w-full border-0 grayscale transition-all duration-500 hover:grayscale-0"
-                  allowFullScreen
-                  loading="lazy"
-                  referrerPolicy="no-referrer-when-downgrade"
-                />
+                {googleMapsUrl ? (
+                  <iframe
+                    title="Office Location Map"
+                    src={googleMapsUrl}
+                    className="h-full w-full border-0 grayscale transition-all duration-500 hover:grayscale-0"
+                    allowFullScreen
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                  />
+                ) : null}
               </div>
             </div>
           </ScrollReveal>
