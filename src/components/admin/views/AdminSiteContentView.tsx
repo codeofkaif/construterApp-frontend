@@ -1,8 +1,10 @@
-import { motion } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import {
+  CheckCircle2,
   ExternalLink,
   Minus,
   Plus,
+  RefreshCw,
   Save,
 } from 'lucide-react'
 import { useState } from 'react'
@@ -19,6 +21,68 @@ import {
 const SOCIAL_ICON_OPTIONS = Object.keys(SOCIAL_ICON_MAP)
 
 // ---------------------------------------------------------------------------
+// Shared reusable Save Button with spinner + toast
+// ---------------------------------------------------------------------------
+
+function SaveBar({
+  saving,
+  error,
+  toast,
+  label,
+  onClick,
+}: {
+  saving: boolean
+  error: string | null
+  toast: string | null
+  label: string
+  onClick: () => void
+}) {
+  return (
+    <>
+      {error && (
+        <div className="mb-4 rounded-button border border-red-400/30 bg-red-400/10 px-4 py-2.5 text-sm text-red-400">
+          ⚠️ {error}
+        </div>
+      )}
+      <div className="flex justify-end border-t border-white/[0.06] pt-4">
+        <button
+          type="button"
+          onClick={onClick}
+          disabled={saving}
+          className="inline-flex items-center gap-2 rounded-button bg-brand-gold px-6 py-2.5 text-sm font-semibold text-brand-dark hover:bg-brand-goldLight disabled:opacity-60 transition-colors"
+        >
+          {saving ? (
+            <>
+              <RefreshCw className="h-4 w-4 animate-spin" />
+              Saving…
+            </>
+          ) : (
+            <>
+              <Save className="h-4 w-4" />
+              {label}
+            </>
+          )}
+        </button>
+      </div>
+
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: 40, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 40, scale: 0.96 }}
+            className="fixed bottom-6 left-1/2 z-[200] -translate-x-1/2 rounded-button bg-brand-dark border border-brand-gold/30 px-5 py-3 text-sm font-medium text-white shadow-xl flex items-center gap-2"
+          >
+            <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+            {toast}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Tab 1: About Us Form
 // ---------------------------------------------------------------------------
 
@@ -28,12 +92,22 @@ function AboutUsTab() {
     ...aboutContent,
     paragraphs: [...aboutContent.paragraphs],
   })
-  const [saved, setSaved] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
 
-  const handleSave = () => {
-    setAboutContent(form)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+  const handleSave = async () => {
+    setSaving(true)
+    setError(null)
+    try {
+      await setAboutContent(form)
+      setToast('About Us content saved to backend!')
+      setTimeout(() => setToast(null), 3000)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save. Is the backend online?')
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handleParagraphChange = (index: number, text: string) => {
@@ -120,16 +194,7 @@ function AboutUsTab() {
         </div>
       </div>
 
-      <div className="flex justify-end pt-4 border-t border-white/[0.06]">
-        <button
-          type="button"
-          onClick={handleSave}
-          className="inline-flex items-center gap-2 rounded-button bg-brand-gold px-6 py-2.5 text-sm font-semibold text-brand-dark hover:bg-brand-goldLight"
-        >
-          <Save className="h-4 w-4" />
-          {saved ? 'Saved!' : 'Save About Us'}
-        </button>
-      </div>
+      <SaveBar saving={saving} error={error} toast={toast} label="Save About Us" onClick={handleSave} />
     </div>
   )
 }
@@ -141,12 +206,22 @@ function AboutUsTab() {
 function ContactTab() {
   const { contactContent, setContactContent } = useSiteContent()
   const [form, setForm] = useState<ContactContent>({ ...contactContent })
-  const [saved, setSaved] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
 
-  const handleSave = () => {
-    setContactContent(form)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+  const handleSave = async () => {
+    setSaving(true)
+    setError(null)
+    try {
+      await setContactContent(form)
+      setToast('Contact info saved to backend!')
+      setTimeout(() => setToast(null), 3000)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save. Is the backend online?')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -210,16 +285,7 @@ function ContactTab() {
         </div>
       </div>
 
-      <div className="flex justify-end pt-4 border-t border-white/[0.06]">
-        <button
-          type="button"
-          onClick={handleSave}
-          className="inline-flex items-center gap-2 rounded-button bg-brand-gold px-6 py-2.5 text-sm font-semibold text-brand-dark hover:bg-brand-goldLight"
-        >
-          <Save className="h-4 w-4" />
-          {saved ? 'Saved!' : 'Save Contact Info'}
-        </button>
-      </div>
+      <SaveBar saving={saving} error={error} toast={toast} label="Save Contact Info" onClick={handleSave} />
     </div>
   )
 }
@@ -235,12 +301,22 @@ function FooterTab() {
     quickLinks: [...footerContent.quickLinks],
     socialLinks: [...footerContent.socialLinks],
   })
-  const [saved, setSaved] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
 
-  const handleSave = () => {
-    setFooterContent(form)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+  const handleSave = async () => {
+    setSaving(true)
+    setError(null)
+    try {
+      await setFooterContent(form)
+      setToast('Footer content saved to backend!')
+      setTimeout(() => setToast(null), 3000)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save. Is the backend online?')
+    } finally {
+      setSaving(false)
+    }
   }
 
   // Quick Links handlers
@@ -403,16 +479,7 @@ function FooterTab() {
         />
       </div>
 
-      <div className="flex justify-end pt-4 border-t border-white/[0.06]">
-        <button
-          type="button"
-          onClick={handleSave}
-          className="inline-flex items-center gap-2 rounded-button bg-brand-gold px-6 py-2.5 text-sm font-semibold text-brand-dark hover:bg-brand-goldLight"
-        >
-          <Save className="h-4 w-4" />
-          {saved ? 'Saved!' : 'Save Footer'}
-        </button>
-      </div>
+      <SaveBar saving={saving} error={error} toast={toast} label="Save Footer" onClick={handleSave} />
     </div>
   )
 }

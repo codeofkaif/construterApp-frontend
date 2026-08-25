@@ -111,12 +111,9 @@ export function SiteContentProvider({ children }: { children: ReactNode }) {
 
   const save = useCallback(async (next: FullSiteContent) => {
     setData(next)
-    writeCache(next)                                        // localStorage: instant, single-device cache
-    try {
-      await adminContent.saveConfig(LS_KEY, next)          // backend: cross-device source of truth
-    } catch (err) {
-      console.warn('Backend saveConfig failed for site-content:', err)
-    }
+    writeCache(next)
+    // Throws on failure so the calling view can show an error banner
+    await adminContent.saveConfig(LS_KEY, next)
   }, [])
 
   const setAboutContent   = useCallback((c: AboutContent)   => save({ ...data, about: c }),   [data, save])

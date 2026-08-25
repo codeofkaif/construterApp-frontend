@@ -73,11 +73,8 @@ export function HomepageProvider({ children }: { children: ReactNode }) {
   const setContent = useCallback(async (c: HomepageContent) => {
     setContent_(c)
     writeCache(c)
-    try {
-      await adminContent.saveConfig('homepage', c)
-    } catch (err) {
-      console.warn('Backend saveConfig failed, cached locally:', err)
-    }
+    // Throws on failure so the calling view can show an error banner
+    await adminContent.saveConfig('homepage', c)
   }, [])
 
   const value = useMemo(() => ({ content, setContent, refetch }), [content, setContent, refetch])
