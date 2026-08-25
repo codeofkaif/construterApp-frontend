@@ -72,7 +72,7 @@ export default function ServiceDetailPage() {
   const detail = slug ? serviceDetails[slug] : null
 
   return (
-    <div className="min-h-screen bg-brand-dark px-6 py-24 lg:px-12">
+    <div className="min-h-screen bg-brand-dark px-5 py-20 sm:px-8 sm:py-24 lg:px-12">
       <div className="mx-auto max-w-3xl">
         <Link
           to="/#services"
@@ -85,7 +85,7 @@ export default function ServiceDetailPage() {
         <p className="mb-3 text-xs font-medium uppercase tracking-[0.25em] text-brand-gold">
           Service Detail
         </p>
-        <h1 className="font-heading text-4xl font-semibold text-white md:text-5xl">
+        <h1 className="font-heading text-2xl font-semibold text-white sm:text-3xl md:text-5xl">
           {formattedTitle}
         </h1>
 
@@ -114,7 +114,7 @@ export default function ServiceDetailPage() {
         <motion.div className="mt-10" whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
           <Link
             to="/?consult=1"
-            className="interactive-focus inline-flex items-center gap-2 rounded-button bg-brand-gold px-6 py-3 text-sm font-medium text-brand-dark transition-colors hover:bg-brand-goldLight"
+            className="interactive-focus inline-flex w-full items-center justify-center gap-2 rounded-button bg-brand-gold px-6 py-3.5 text-sm font-medium text-brand-dark transition-colors hover:bg-brand-goldLight sm:w-auto"
           >
             <Phone className="h-4 w-4" />
             Get Free Consultation

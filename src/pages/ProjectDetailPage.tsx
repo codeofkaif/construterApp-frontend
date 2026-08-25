@@ -22,7 +22,7 @@ export default function ProjectDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-brand-cream px-6 py-24 lg:px-12">
+    <div className="min-h-screen bg-brand-cream px-5 py-20 sm:px-8 sm:py-24 lg:px-12">
       <div className="mx-auto max-w-6xl">
         <Link
           to="/#projects"
@@ -35,7 +35,7 @@ export default function ProjectDetailPage() {
         <p className="mb-3 text-xs font-medium uppercase tracking-[0.25em] text-brand-gold">
           Project Details
         </p>
-        <h1 className="font-heading text-4xl font-semibold text-brand-dark md:text-5xl">
+        <h1 className="font-heading text-2xl font-semibold text-brand-dark sm:text-3xl md:text-5xl">
           {project.title}
         </h1>
 
@@ -44,20 +44,20 @@ export default function ProjectDetailPage() {
           {project.location}
         </div>
 
-        <div className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
+        <div className="mt-6 grid grid-cols-2 gap-3 sm:mt-8 md:grid-cols-4 md:gap-4">
           {project.stats.map((stat) => (
             <div
               key={stat.label}
-              className="rounded-lg border border-border-light bg-white p-4 shadow-sm"
+              className="rounded-lg border border-border-light bg-white p-3 shadow-sm sm:p-4"
             >
-              <p className="text-base font-bold text-brand-dark">{stat.value}</p>
-              <p className="mt-1 text-sm text-gray-500">{stat.label}</p>
+              <p className="text-sm font-bold text-brand-dark sm:text-base">{stat.value}</p>
+              <p className="mt-1 text-xs text-gray-500 sm:text-sm">{stat.label}</p>
             </div>
           ))}
         </div>
 
-        <div className="mt-12">
-          <h2 className="mb-6 font-heading text-2xl font-semibold text-brand-dark">
+        <div className="mt-10 sm:mt-12">
+          <h2 className="mb-5 font-heading text-xl font-semibold text-brand-dark sm:mb-6 sm:text-2xl">
             Photo Gallery
           </h2>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

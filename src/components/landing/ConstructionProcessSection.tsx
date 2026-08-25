@@ -34,8 +34,8 @@ function StepBadge({ step }: { step: ProcessStep }) {
   const isUpcoming = step.status === 'upcoming'
 
   return (
-    <div className="flex w-[88px] shrink-0 flex-col items-center sm:w-[100px]">
-      <div className="relative flex h-12 w-12 items-center justify-center">
+    <div className="flex w-[72px] shrink-0 flex-col items-center sm:w-[88px] lg:w-[100px]">
+      <div className="relative flex h-10 w-10 items-center justify-center sm:h-12 sm:w-12">
         {isCurrent && (
           <motion.span
             className="absolute inset-0 rounded-full border-2 border-brand-orange"
@@ -45,7 +45,7 @@ function StepBadge({ step }: { step: ProcessStep }) {
         )}
 
         <div
-          className={`relative flex h-12 w-12 items-center justify-center rounded-full ${
+          className={`relative flex h-10 w-10 items-center justify-center rounded-full sm:h-12 sm:w-12 ${
             isCompleted
               ? 'bg-brand-green text-white'
               : isCurrent
@@ -53,12 +53,12 @@ function StepBadge({ step }: { step: ProcessStep }) {
                 : 'border-2 border-white/25 bg-transparent text-white/50'
           }`}
         >
-          <Icon className="h-5 w-5" strokeWidth={1.75} />
+          <Icon className="h-4 w-4 sm:h-5 sm:w-5" strokeWidth={1.75} />
         </div>
       </div>
 
       <p
-        className={`mt-3 text-center text-xs font-medium ${
+        className={`mt-2 text-center text-[10px] font-medium sm:mt-3 sm:text-xs ${
           isUpcoming ? 'text-white/50' : 'text-white'
         }`}
       >
@@ -71,7 +71,7 @@ function StepBadge({ step }: { step: ProcessStep }) {
 function Connector({ isActive }: { isActive: boolean }) {
   return (
     <div
-      className={`mb-6 h-0.5 min-w-[40px] flex-1 self-center ${
+      className={`mb-6 h-0.5 min-w-[20px] flex-1 self-center sm:min-w-[40px] ${
         isActive ? 'bg-brand-green' : 'bg-white/20'
       }`}
     />
@@ -80,15 +80,15 @@ function Connector({ isActive }: { isActive: boolean }) {
 
 export default function ConstructionProcessSection() {
   return (
-    <section className="bg-brand-dark px-6 py-10 lg:px-12">
+    <section className="bg-brand-dark px-5 py-10 sm:px-8 sm:py-10 lg:px-12">
       <div className="mx-auto max-w-6xl">
         <ScrollReveal>
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:gap-12">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:gap-12">
             <p className="shrink-0 text-xs font-medium uppercase tracking-[0.25em] text-brand-gold lg:w-48">
               Construction Process
             </p>
 
-            <div className="scrollbar-hide -mx-6 overflow-x-auto px-6 lg:mx-0 lg:flex-1 lg:overflow-visible lg:px-0">
+            <div className="scrollbar-hide -mx-5 overflow-x-auto px-5 sm:-mx-8 sm:px-8 lg:mx-0 lg:flex-1 lg:overflow-visible lg:px-0">
               <div className="flex min-w-max items-center pb-2 lg:min-w-0 lg:w-full lg:pb-0">
                 {steps.map((step, index) => (
                   <div key={step.label} className="flex items-center">

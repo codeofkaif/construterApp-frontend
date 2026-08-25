@@ -13,8 +13,9 @@ export default function Footer() {
 
   return (
     <footer className="border-t border-white/[0.08] bg-brand-dark">
-      <div className="mx-auto max-w-6xl px-6 py-16 lg:px-12">
-        <div className="grid grid-cols-1 gap-12 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mx-auto max-w-6xl px-5 py-12 sm:px-8 sm:py-16 lg:px-12">
+        <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 sm:gap-12 lg:grid-cols-3">
+          {/* Brand */}
           <div>
             <a
               href="#home"
@@ -41,6 +42,7 @@ export default function Footer() {
             </p>
           </div>
 
+          {/* Quick Links */}
           <div>
             <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-white">
               Quick Links
@@ -73,6 +75,7 @@ export default function Footer() {
             </ul>
           </div>
 
+          {/* Contact */}
           <div>
             <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-white">
               Contact
@@ -84,7 +87,7 @@ export default function Footer() {
               </li>
               <li className="flex items-start gap-3 text-sm text-white/70">
                 <Mail className="mt-0.5 h-4 w-4 shrink-0 text-brand-gold" />
-                <span>{contactContent.email}</span>
+                <span className="break-all">{contactContent.email}</span>
               </li>
               <li className="flex items-start gap-3 text-sm text-white/70">
                 <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-brand-gold" />
@@ -92,7 +95,7 @@ export default function Footer() {
               </li>
             </ul>
 
-            <div className="mt-6 flex items-center gap-3">
+            <div className="mt-6 flex flex-wrap items-center gap-3">
               {footerContent.socialLinks.map(({ iconName, href }, index) => {
                 const Icon = SOCIAL_ICON_MAP[iconName] || SOCIAL_ICON_MAP.Globe
                 return (
@@ -113,8 +116,8 @@ export default function Footer() {
         </div>
       </div>
 
-      <div className="border-t border-white/[0.08] px-6 py-5 lg:px-12">
-        <p className="text-center text-sm text-white/60">
+      <div className="border-t border-white/[0.08] px-5 py-5 sm:px-8 lg:px-12">
+        <p className="text-center text-xs text-white/60 sm:text-sm">
           {footerContent.copyright}
         </p>
       </div>

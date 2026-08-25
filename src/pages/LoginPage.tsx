@@ -77,8 +77,8 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-brand-dark px-4 py-12">
-      <div className="w-full max-w-md rounded-card border border-white/[0.08] bg-brand-darkCard p-8 shadow-2xl">
+    <div className="flex min-h-screen items-center justify-center bg-brand-dark px-4 py-8 sm:py-12">
+      <div className="w-full max-w-md rounded-card border border-white/[0.08] bg-brand-darkCard p-6 shadow-2xl sm:p-8">
         {/* Logo & Header */}
         <Link to="/" className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-brand-gold/15 text-brand-gold">
           <span className="text-2xl">🏗️</span>
