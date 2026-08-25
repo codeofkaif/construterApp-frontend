@@ -25,8 +25,19 @@ function AnimatedProgressNumber({ value }: { value: number }) {
 export default function DashboardSummaryCards({
   project,
 }: DashboardSummaryCardsProps) {
-  const { progress, lastUpdated, thumbnail, currentStage, nextMilestone } =
-    project
+  const progress = project?.progress ?? 0
+  const lastUpdated = project?.lastUpdated ?? 'Live'
+  const thumbnail = project?.thumbnail
+  const currentStage = project?.currentStage ?? {
+    name: 'In Progress',
+    status: 'In Progress',
+    startedOn: '—',
+    estimatedCompletion: 'TBD',
+  }
+  const nextMilestone = project?.nextMilestone ?? {
+    name: 'Milestone Review',
+    expectedOn: 'Upcoming',
+  }
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
